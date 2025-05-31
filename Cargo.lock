@@ -1413,9 +1413,8 @@ dependencies = [
 
 [[package]]
 name = "bevy_simple_subsecond_system"
-version = "0.1.11"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "335e860e2468f38d6de1d1ec8ebc569beecefcfe3837f73d4c8d0ee7540c5177"
+version = "0.2.0"
+source = "git+https://github.com/TheBevyFlock/bevy_simple_subsecond_system#7787bcd13d6ba649e4e6ae49660579e950d35f6d"
 dependencies = [
  "bevy_app",
  "bevy_derive",
@@ -1424,7 +1423,9 @@ dependencies = [
  "bevy_internal",
  "bevy_log",
  "bevy_platform",
+ "bevy_reflect",
  "bevy_simple_subsecond_system_macros",
+ "bevy_utils",
  "crossbeam-channel",
  "dioxus-devtools",
  "send_wrapper",
@@ -1433,8 +1434,7 @@ dependencies = [
 [[package]]
 name = "bevy_simple_subsecond_system_macros"
 version = "0.1.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a7d4b463638ec295cda2c604554d0939e04364250b5dbd9fd1b788cddea6c063"
+source = "git+https://github.com/TheBevyFlock/bevy_simple_subsecond_system#7787bcd13d6ba649e4e6ae49660579e950d35f6d"
 dependencies = [
  "proc-macro2",
  "quote",

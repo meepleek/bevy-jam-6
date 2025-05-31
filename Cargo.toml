@@ -44,7 +44,7 @@ bevy_editor_pls = { version = "0.11", features = [
 ], optional = true }
 bevy_mod_debugdump = { version = "0.13", optional = true }
 bevy_simple_prefs = "0.6"
-bevy_simple_subsecond_system = { version = "0.1", optional = true }
+bevy_simple_subsecond_system = { version = "0.2.0", optional = true, git = "https://github.com/TheBevyFlock/bevy_simple_subsecond_system" }
 bevy_state = { version = "0.16", default-features = false }
 dirs = { version = "6", optional = true }
 iyes_progress = "0.14"
@@ -193,6 +193,16 @@ codegen-units = 4
 
 [profile.ci.package."*"]
 opt-level = 0
+
+[profile.wasm-dev]
+inherits = "dev"
+opt-level = 1
+
+[profile.server-dev]
+inherits = "dev"
+
+[profile.android-dev]
+inherits = "dev"
 
 
 # TODO: Workaround for <https://github.com/DioxusLabs/dioxus/issues/4160>.
