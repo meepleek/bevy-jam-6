@@ -1,2 +1,10 @@
 [toolchain]
 channel = "nightly-2025-04-03"
+components = [
+    "rustfmt",
+    "rustc",
+    "clippy",
+    "cargo",
+    "rust-analyzer",
+    "rustc-codegen-cranelift",
+]
