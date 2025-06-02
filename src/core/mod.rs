@@ -18,7 +18,7 @@ pub(super) fn plugin(app: &mut App) {
     app.configure::<UpdateSystems>();
 
     // Add Bevy plugins.
-    app.add_plugins(
+    app.add_plugins((
         DefaultPlugins
             .build()
             .set(ImagePlugin::default_nearest())
@@ -28,7 +28,8 @@ pub(super) fn plugin(app: &mut App) {
             .disable::<AssetPlugin>()
             .add_before::<WindowPlugin>(asset::plugin)
             .add_before::<WindowPlugin>(state::plugin),
-    );
+        MeshPickingPlugin,
+    ));
 
     // Add other core plugins.
     app.add_plugins((

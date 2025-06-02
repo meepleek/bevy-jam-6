@@ -1,6 +1,7 @@
 use bevy::ui::UiDebugOptions;
 
 use crate::game::board::Board;
+use crate::game::piece::PIECE_TILE_SIZE;
 use crate::prelude::*;
 
 pub(super) fn plugin(app: &mut App) {
@@ -16,7 +17,7 @@ fn draw_board_grid(options: Res<UiDebugOptions>, mut gizmos: Gizmos, board_q: Qu
                 .grid_2d(
                     Isometry2d::IDENTITY,
                     board.size().as_uvec2(),
-                    Vec2::ONE * 64.,
+                    Vec2::ONE * PIECE_TILE_SIZE as f32,
                     CYAN_400,
                 )
                 .outer_edges();

@@ -8,4 +8,6 @@ pub mod piece;
 pub type Coords = U16Vec2;
 pub type PieceCoords = I16Vec2;
 
-pub fn plugin(app: &mut App) {}
+pub fn plugin(app: &mut App) {
+    app.add_plugins(piece::plugin);
+}

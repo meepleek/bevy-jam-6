@@ -18,6 +18,8 @@ bevy = { version = "0.16", default-features = false, features = [
     "bevy_winit",
     "bevy_ui",
     "bevy_ui_picking_backend",
+    "bevy_mesh_picking_backend",
+    "bevy_sprite_picking_backend",
 
     # Extra features
     "async_executor",

@@ -1,9 +1,18 @@
 use bevy::platform::collections::HashSet;
 use bevy::prelude::*;
+use tiny_bail::or_continue;
 
 use super::PieceCoords;
+use crate::prelude::*;
 
-#[derive(Debug, Clone, PartialEq)]
+pub const PIECE_TILE_SIZE: u16 = 64;
+
+pub fn plugin(app: &mut App) {
+    app.add_systems(Update, on_piece_added);
+}
+
+#[derive(Component, Debug, Clone, PartialEq)]
+#[require(TilePieces, TileRawPosition, Transform, Visibility)]
 pub enum Piece {
     Pattern {
         size: u16,
@@ -11,6 +20,25 @@ pub enum Piece {
     },
     Direction(Dir2),
 }
+
+#[derive(Component, Default)]
+pub struct TileRawPosition(Vec2);
+
+impl TileRawPosition {
+    pub fn snapped_position(&self, z: f32) -> Vec3 {
+        ((self.0 / PIECE_TILE_SIZE as f32).round() * PIECE_TILE_SIZE as f32
+            + Vec2::splat(PIECE_TILE_SIZE as f32 / 2.))
+        .extend(z)
+    }
+}
+
+#[derive(Component)]
+#[relationship(relationship_target = TilePieces)]
+pub struct TilePieceOf(Entity);
+
+#[derive(Component, Default)]
+#[relationship_target(relationship = TilePieceOf, linked_spawn)]
+pub struct TilePieces(Vec<Entity>);
 
 impl Piece {
     pub fn dir(dir: Dir2) -> Self {
@@ -123,6 +151,47 @@ impl Piece {
     pub fn cross_diag() -> Self {
         Self::pattern([(1, 1), (1, -1), (-1, -1), (-1, 1)])
     }
+}
+
+#[cfg_attr(feature = "native_dev", hot)]
+fn on_piece_added(
+    mut cmd: Commands,
+    added_piece_q: Query<(Entity, &Piece), Added<Piece>>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
+) {
+    for (e, piece) in added_piece_q {
+        let mut e_cmd = or_continue!(cmd.get_entity(e));
+
+        e_cmd.with_children(|b| {
+            for tile in piece.explosion_tiles() {
+                b.spawn((
+                    Mesh2d(meshes.add(Rectangle::new(
+                        PIECE_TILE_SIZE as f32 * 0.9,
+                        PIECE_TILE_SIZE as f32 * 0.9,
+                    ))),
+                    MeshMaterial2d(materials.add(Color::from(AMBER_300))),
+                    Transform::from_xyz(
+                        tile.x as f32 * PIECE_TILE_SIZE as f32,
+                        tile.y as f32 * PIECE_TILE_SIZE as f32,
+                        0.0,
+                    ),
+                    TilePieceOf(b.target_entity()),
+                ));
+            }
+        });
+        e_cmd.observe(drag_piece);
+    }
+}
+
+#[cfg_attr(feature = "native_dev", hot)]
+fn drag_piece(
+    drag: Trigger<Pointer<Drag>>,
+    mut tile_q: Query<(&mut Transform, &mut TileRawPosition)>,
+) {
+    let (mut t, mut raw_pos) = or_return!(tile_q.get_mut(drag.target()));
+    raw_pos.0 += drag.delta * Vec2::new(1., -1.);
+    t.translation = raw_pos.snapped_position(t.translation.z);
 }
 
 #[cfg(test)]
