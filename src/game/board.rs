@@ -1,3 +1,4 @@
+use bevy::math::U16Vec2;
 use bevy::platform::collections::HashMap;
 use bevy::platform::collections::HashSet;
 use bevy::prelude::*;
@@ -7,7 +8,7 @@ use super::piece::Piece;
 
 const DEFAULT_SIZE: u16 = 6;
 
-#[derive(Debug)]
+#[derive(Component, Debug)]
 pub struct Board {
     width: u16,
     heigth: u16,
@@ -38,6 +39,10 @@ impl Board {
             tiles: HashMap::default(),
             explosion_grid: HashSet::default(),
         }
+    }
+
+    pub fn size(&self) -> U16Vec2 {
+        (self.width, self.heigth).into()
     }
 
     pub fn can_place_at(&self, coords: Coords) -> Result<(), PlaceError> {
@@ -101,7 +106,6 @@ mod tests {
     #[test_case(0, 50 => matches Err(PlaceError::OutOfBounds))]
     fn can_place_at_coords(x: u16, y: u16) -> Result<(), PlaceError> {
         let board = Board::new(6, 9);
-        // L piece
         board.can_place_at((x, y).into())
     }
 

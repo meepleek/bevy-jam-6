@@ -1,5 +1,6 @@
 //! Dev tools for dev builds.
 
+mod board;
 mod diagnostics;
 #[cfg(feature = "native_dev")]
 mod editor;
@@ -26,6 +27,7 @@ pub(super) fn plugin(app: &mut App) {
         picking::plugin,
         state::plugin,
         ui::plugin,
+        board::plugin,
     ));
 
     // Apply the default config.
