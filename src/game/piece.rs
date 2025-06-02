@@ -1,15 +1,199 @@
+use bevy::platform::collections::HashSet;
 use bevy::prelude::*;
 
-const PIECE_SIZE: u16 = 5;
+use super::PieceCoords;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Piece {
-    Pattern([u16; (PIECE_SIZE * PIECE_SIZE) as usize]),
+    Pattern {
+        size: u16,
+        explosion_tiles: HashSet<PieceCoords>,
+    },
     Direction(Dir2),
 }
 
-// impl std::fmt::Display for Piece {
-//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-//         f.write_str(data)
-//     }
-// }
+impl Piece {
+    pub fn dir(dir: Dir2) -> Self {
+        Self::Direction(dir)
+    }
+
+    pub fn pattern<C: Into<PieceCoords>>(explosion_tiles: impl IntoIterator<Item = C>) -> Self {
+        let explosion_tiles: HashSet<PieceCoords> =
+            explosion_tiles.into_iter().map(Into::into).collect();
+        if explosion_tiles.is_empty() {
+            panic!("Invalid pattern: a pattern piece has to have at least 1 exploing tile");
+        }
+        let half_size = explosion_tiles
+            .iter()
+            .map(|tile| tile.abs().max_element())
+            .max_by(|a, b| a.cmp(b))
+            .unwrap();
+        Self::Pattern {
+            size: (half_size * 2 + 1) as u16,
+            explosion_tiles,
+        }
+    }
+
+    pub fn size(&self) -> u16 {
+        match self {
+            Piece::Pattern { size, .. } => *size,
+            Piece::Direction(_) => 1,
+        }
+    }
+
+    pub fn draw_piece_tile(&self, piece_tile: impl Into<PieceCoords>) -> Option<char> {
+        let piece_tile = piece_tile.into();
+        match self {
+            Piece::Pattern {
+                explosion_tiles: tiles,
+                ..
+            } => {
+                if piece_tile == PieceCoords::ZERO {
+                    return Some('x');
+                }
+                if tiles.contains(&piece_tile) {
+                    Some('*')
+                } else {
+                    None
+                }
+            },
+            Piece::Direction(dir) => {
+                if piece_tile != PieceCoords::ZERO {
+                    return None;
+                }
+                Some(match *dir {
+                    Dir2::NORTH => '↑',
+                    Dir2::NORTH_EAST => '↗',
+                    Dir2::EAST => '→',
+                    Dir2::SOUTH_EAST => '↘',
+                    Dir2::SOUTH => '↓',
+                    Dir2::SOUTH_WEST => '↙',
+                    Dir2::WEST => '←',
+                    Dir2::NORTH_WEST => '↖',
+                    _ => panic!("Invalid direction"),
+                })
+            },
+        }
+    }
+
+    fn draw_piece(&self) -> String {
+        match self {
+            Piece::Pattern { size, .. } => {
+                let half_size = *size as i16 / 2;
+                (-half_size..=half_size)
+                    .map(|y| {
+                        (-half_size..=half_size)
+                            .map(move |x| self.draw_piece_tile((x, y)).unwrap_or('.'))
+                            .collect()
+                    })
+                    .collect::<Vec<String>>()
+                    .join("\n")
+            },
+            Piece::Direction(_) => self
+                .draw_piece_tile(PieceCoords::ZERO)
+                .expect("Valid direction piece")
+                .to_string(),
+        }
+    }
+}
+
+impl Piece {
+    pub fn line() -> Self {
+        Self::pattern([(-1, 0), (1, 0)])
+    }
+
+    pub fn line_diag() -> Self {
+        Self::pattern([(-1, -1), (1, 1)])
+    }
+
+    pub fn cross() -> Self {
+        Self::pattern([(0, 1), (1, 0), (0, -1), (-1, 0)])
+    }
+
+    pub fn cross_diag() -> Self {
+        Self::pattern([(1, 1), (1, -1), (-1, -1), (-1, 1)])
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use pretty_assertions::assert_eq;
+    use test_case::test_case;
+
+    use super::*;
+
+    #[test]
+    #[should_panic]
+    fn invalid_pattern_piece_panics() {
+        let _ = Piece::pattern(Vec::<PieceCoords>::new());
+    }
+
+    #[test_case([(-1, 0), (1, 0)], 3)]
+    #[test_case([(-1, -1), (1, 1)], 3)]
+    #[test_case([(0, 2)], 5)]
+    fn pattern_piece(explosion_tiles: impl IntoIterator<Item = (i16, i16)>, expected_size: u16) {
+        let explosion_tiles: HashSet<PieceCoords> =
+            explosion_tiles.into_iter().map(Into::into).collect();
+        let piece = Piece::pattern(explosion_tiles.clone());
+        if let Piece::Pattern {
+            size,
+            explosion_tiles,
+            ..
+        } = piece
+        {
+            assert_eq!(expected_size, size);
+            assert_eq!(explosion_tiles, explosion_tiles);
+        } else {
+            panic!("Invalid piece kind");
+        }
+    }
+
+    #[test_case(Piece::dir(Dir2::NORTH), 0, 1, None)]
+    #[test_case(Piece::dir(Dir2::NORTH), 1, 1, None)]
+    #[test_case(Piece::dir(Dir2::NORTH), 0, 0, Some('↑'))]
+    #[test_case(Piece::line(), 0, 0, Some('x'))]
+    #[test_case(Piece::line(), -1, 0, Some('*'))]
+    #[test_case(Piece::line(), 0, 1, None)]
+    fn draw_piece_tile(piece: Piece, x: i16, y: i16, expected: Option<char>) {
+        let res = piece.draw_piece_tile((x, y));
+        assert_eq!(expected, res)
+    }
+
+    #[test_case(Piece::dir(Dir2::NORTH), "↑")]
+    #[test_case(
+        Piece::line(),
+        "
+...
+*x*
+...
+"
+    )]
+    #[test_case(
+        Piece::line_diag(),
+        "
+*..
+.x.
+..*
+"
+    )]
+    #[test_case(
+        Piece::cross(),
+        "
+.*.
+*x*
+.*.
+"
+    )]
+    #[test_case(
+        Piece::cross_diag(),
+        "
+*.*
+.x.
+*.*
+"
+    )]
+    fn draw_piece(piece: Piece, expected: &str) {
+        let res = piece.draw_piece();
+        assert_eq!(expected.trim_ascii(), res)
+    }
+}

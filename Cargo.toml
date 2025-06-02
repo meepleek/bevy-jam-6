@@ -204,6 +204,10 @@ inherits = "dev"
 [profile.android-dev]
 inherits = "dev"
 
+[dev-dependencies]
+pretty_assertions = "1.4.1"
+test-case = "3.3.1"
+
 
 # TODO: Workaround for <https://github.com/DioxusLabs/dioxus/issues/4160>.
 #[[bin]]

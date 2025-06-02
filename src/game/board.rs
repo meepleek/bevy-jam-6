@@ -1,7 +1,7 @@
-use bevy::math::U16Vec2;
 use bevy::platform::collections::HashMap;
 use bevy::prelude::*;
 
+use super::Coords;
 use super::piece::Piece;
 
 const DEFAULT_SIZE: u16 = 6;
@@ -10,7 +10,7 @@ const DEFAULT_SIZE: u16 = 6;
 pub struct Board {
     width: u16,
     heigth: u16,
-    tiles: HashMap<U16Vec2, Piece>,
+    tiles: HashMap<Coords, Piece>,
 }
 
 impl Default for Board {
@@ -37,7 +37,7 @@ impl Board {
         }
     }
 
-    pub fn can_place_at(&self, coords: U16Vec2) -> Result<(), PlaceError> {
+    pub fn can_place_at(&self, coords: Coords) -> Result<(), PlaceError> {
         if coords.x >= self.width || coords.y >= self.heigth {
             return Err(PlaceError::OutOfBounds);
         } else if self.tiles.contains_key(&coords) {
@@ -47,13 +47,13 @@ impl Board {
         Ok(())
     }
 
-    pub fn place_piece(&mut self, coords: U16Vec2, piece: Piece) -> Result<(), PlaceError> {
+    pub fn place_piece(&mut self, coords: Coords, piece: Piece) -> Result<(), PlaceError> {
         self.can_place_at(coords)?;
         self.tiles.insert(coords, piece);
         Ok(())
     }
 
-    // fn tile_index(&self, coords: U16Vec2) -> usize {
+    // fn tile_index(&self, coords: Coords) -> usize {
     //     usize::from(coords.y * self.width + coords.x)
     // }
 
@@ -95,7 +95,7 @@ mod tests {
 
     #[test]
     fn cannot_place_at_coords_when_taken() {
-        let coords: U16Vec2 = (3, 3).into();
+        let coords: Coords = (3, 3).into();
         let mut board = Board::new(6, 6);
         board
             .place_piece(coords, Piece::Direction(Dir2::NORTH))
