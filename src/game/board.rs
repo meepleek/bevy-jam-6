@@ -84,8 +84,8 @@ mod tests {
     #[test_case(3, 3 => matches Ok(_))]
     #[test_case(4, 6 => matches Ok(_))]
     #[test_case(6, 0 => matches Err(PlaceError::OutOfBounds))]
+    #[test_case(0, 9 => matches Err(PlaceError::OutOfBounds))]
     #[test_case(50, 0 => matches Err(PlaceError::OutOfBounds))]
-    #[test_case(0, 6 => matches Err(PlaceError::OutOfBounds))]
     #[test_case(0, 50 => matches Err(PlaceError::OutOfBounds))]
     fn can_place_at_coords(x: u16, y: u16) -> Result<(), PlaceError> {
         let board = Board::new(6, 9);
