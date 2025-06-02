@@ -16,7 +16,7 @@ fn draw_board_grid(options: Res<UiDebugOptions>, mut gizmos: Gizmos, board_q: Qu
                 .grid_2d(
                     Isometry2d::IDENTITY,
                     board.size().as_uvec2(),
-                    Vec2::ONE * 96.,
+                    Vec2::ONE * 64.,
                     CYAN_400,
                 )
                 .outer_edges();

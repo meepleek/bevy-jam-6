@@ -9,30 +9,11 @@ use crate::screen::ScreenRoot;
 pub(super) fn plugin(app: &mut App) {
     app.add_systems(StateFlush, Screen::Gameplay.on_enter(spawn_gameplay_screen));
 
-    app.configure::<(GameplayAssets, GameplayAction)>();
+    app.configure::<GameplayAction>();
 }
 
-fn spawn_gameplay_screen(
-    mut commands: Commands,
-    screen_root: Res<ScreenRoot>,
-    audio_settings: Res<AudioSettings>,
-    assets: Res<GameplayAssets>,
-) {
-    commands.spawn((Board::new(6, 6)));
-}
-
-#[derive(AssetCollection, Resource, Reflect, Default)]
-#[reflect(Resource)]
-pub struct GameplayAssets {
-    #[asset(path = "audio/music/545458__bertsz__bit-forest-evil-theme-music.ogg")]
-    music: Handle<AudioSource>,
-}
-
-impl Configure for GameplayAssets {
-    fn configure(app: &mut App) {
-        app.register_type::<Self>();
-        app.init_collection::<Self>();
-    }
+fn spawn_gameplay_screen(mut commands: Commands) {
+    commands.spawn((Board::new(8, 8)));
 }
 
 #[derive(Actionlike, Reflect, Copy, Clone, Eq, PartialEq, Hash, Debug)]
