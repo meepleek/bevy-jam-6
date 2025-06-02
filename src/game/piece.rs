@@ -18,11 +18,12 @@ impl Piece {
     }
 
     pub fn pattern<C: Into<PieceCoords>>(explosion_tiles: impl IntoIterator<Item = C>) -> Self {
-        let explosion_tiles: HashSet<PieceCoords> =
+        let mut explosion_tiles: HashSet<PieceCoords> =
             explosion_tiles.into_iter().map(Into::into).collect();
         if explosion_tiles.is_empty() {
             panic!("Invalid pattern: a pattern piece has to have at least 1 exploing tile");
         }
+        explosion_tiles.insert(PieceCoords::ZERO);
         let half_size = explosion_tiles
             .iter()
             .map(|tile| tile.abs().max_element())
@@ -38,6 +39,15 @@ impl Piece {
         match self {
             Piece::Pattern { size, .. } => *size,
             Piece::Direction(_) => 1,
+        }
+    }
+
+    pub fn explosion_tiles(&self) -> Vec<PieceCoords> {
+        match self {
+            Piece::Pattern {
+                explosion_tiles, ..
+            } => explosion_tiles.iter().cloned().collect(),
+            Piece::Direction(_) => vec![PieceCoords::ZERO],
         }
     }
 
@@ -135,6 +145,11 @@ mod tests {
         let explosion_tiles: HashSet<PieceCoords> =
             explosion_tiles.into_iter().map(Into::into).collect();
         let piece = Piece::pattern(explosion_tiles.clone());
+
+        let mut expected_explosion_tiles = explosion_tiles.clone();
+        // add center tile
+        expected_explosion_tiles.insert(PieceCoords::ZERO);
+
         if let Piece::Pattern {
             size,
             explosion_tiles,
@@ -142,7 +157,7 @@ mod tests {
         } = piece
         {
             assert_eq!(expected_size, size);
-            assert_eq!(explosion_tiles, explosion_tiles);
+            assert_eq!(expected_explosion_tiles, explosion_tiles);
         } else {
             panic!("Invalid piece kind");
         }
