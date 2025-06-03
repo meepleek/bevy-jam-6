@@ -5,6 +5,7 @@
 pub mod config;
 pub mod extend;
 pub mod late_commands;
+pub mod math;
 pub mod patch;
 pub mod previous;
 pub mod selection;

@@ -12,24 +12,13 @@ pub fn plugin(app: &mut App) {
 }
 
 #[derive(Component, Debug, Clone, PartialEq)]
-#[require(TilePieces, TileRawPosition, Transform, Visibility)]
+#[require(TilePieces, Transform, Visibility)]
 pub enum Piece {
     Pattern {
         size: u16,
         explosion_tiles: HashSet<PieceCoords>,
     },
     Direction(Dir2),
-}
-
-#[derive(Component, Default)]
-pub struct TileRawPosition(Vec2);
-
-impl TileRawPosition {
-    pub fn snapped_position(&self, z: f32) -> Vec3 {
-        ((self.0 / PIECE_TILE_SIZE as f32).round() * PIECE_TILE_SIZE as f32
-            + Vec2::splat(PIECE_TILE_SIZE as f32 / 2.))
-        .extend(z)
-    }
 }
 
 #[derive(Component)]
@@ -180,18 +169,26 @@ fn on_piece_added(
                 ));
             }
         });
-        e_cmd.observe(drag_piece);
+        e_cmd.observe(on_drag).observe(on_piece_drag_end);
     }
 }
 
 #[cfg_attr(feature = "native_dev", hot)]
-fn drag_piece(
-    drag: Trigger<Pointer<Drag>>,
-    mut tile_q: Query<(&mut Transform, &mut TileRawPosition)>,
+fn on_drag(drag: Trigger<Pointer<Drag>>, mut tile_q: Query<&mut Transform>) {
+    let mut t = or_return!(tile_q.get_mut(drag.target()));
+    let delta = drag.delta * Vec2::new(1., -1.);
+    t.translation += delta.extend(0.);
+}
+
+#[cfg_attr(feature = "native_dev", hot)]
+fn on_piece_drag_end(
+    drag: Trigger<Pointer<DragEnd>>,
+    mut piece_q: Query<&mut Transform, With<Piece>>,
 ) {
-    let (mut t, mut raw_pos) = or_return!(tile_q.get_mut(drag.target()));
-    raw_pos.0 += drag.delta * Vec2::new(1., -1.);
-    t.translation = raw_pos.snapped_position(t.translation.z);
+    let mut t = or_return!(piece_q.get_mut(drag.target()));
+    t.translation = ((t.translation.xy() / PIECE_TILE_SIZE as f32).round()
+        * PIECE_TILE_SIZE as f32)
+        .extend(t.translation.z);
 }
 
 #[cfg(test)]

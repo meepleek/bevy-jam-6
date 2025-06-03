@@ -1,11 +1,8 @@
-use crate::core::audio::AudioSettings;
-use crate::core::audio::music_audio;
 use crate::game::board::Board;
 use crate::game::piece::Piece;
 use crate::menu::Menu;
 use crate::prelude::*;
 use crate::screen::Screen;
-use crate::screen::ScreenRoot;
 
 pub(super) fn plugin(app: &mut App) {
     app.add_systems(StateFlush, Screen::Gameplay.on_enter(spawn_gameplay_screen));
@@ -14,7 +11,7 @@ pub(super) fn plugin(app: &mut App) {
 }
 
 fn spawn_gameplay_screen(mut cmd: Commands) {
-    cmd.spawn(Board::new(8, 8));
+    cmd.spawn(Board::new(9, 9));
     cmd.spawn(Piece::cross());
 }
 
