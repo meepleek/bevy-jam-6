@@ -186,9 +186,14 @@ fn on_piece_drag_end(
     mut piece_q: Query<&mut Transform, With<Piece>>,
 ) {
     let mut t = or_return!(piece_q.get_mut(drag.target()));
-    t.translation = ((t.translation.xy() / PIECE_TILE_SIZE as f32).round()
+    let snapped_pos = ((t.translation.xy() / PIECE_TILE_SIZE as f32).round()
         * PIECE_TILE_SIZE as f32)
         .extend(t.translation.z);
+    // don't snap when the piece is too close to either axis
+    let max_dist = PIECE_TILE_SIZE as f32 * 0.4;
+    if (snapped_pos - t.translation).abs().max_element() < max_dist {
+        t.translation = snapped_pos;
+    }
 }
 
 #[cfg(test)]
