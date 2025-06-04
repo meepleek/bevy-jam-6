@@ -5,7 +5,9 @@ use bevy::prelude::*;
 
 use super::Coords;
 use super::piece::Piece;
+use crate::game::drag::SnapHover;
 use crate::game::drag::SnapTarget;
+use crate::game::drag::Snappables;
 
 pub const TILE_SIZE: u16 = 64;
 const DEFAULT_BOARD_SIZE: u16 = 6;
@@ -15,7 +17,7 @@ pub fn plugin(app: &mut App) {
 }
 
 #[derive(Component, Debug, PartialEq)]
-#[require(Transform)]
+#[require(Transform, Snappables<Board>, Snappables<SnapHover>)]
 pub struct Board {
     width: u16,
     heigth: u16,
