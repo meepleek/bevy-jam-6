@@ -3,9 +3,9 @@ use bevy::prelude::*;
 use tiny_bail::or_continue;
 
 use super::PieceCoords;
+use super::board::TILE_SIZE;
+use crate::game::drag::Draggable;
 use crate::prelude::*;
-
-pub const PIECE_TILE_SIZE: u16 = 64;
 
 pub fn plugin(app: &mut App) {
     app.add_systems(Update, on_piece_added);
@@ -151,48 +151,25 @@ fn on_piece_added(
 ) {
     for (e, piece) in added_piece_q {
         let mut e_cmd = or_continue!(cmd.get_entity(e));
+        e_cmd.insert(Draggable);
 
         e_cmd.with_children(|b| {
             for tile in piece.explosion_tiles() {
                 b.spawn((
                     Mesh2d(meshes.add(Rectangle::new(
-                        PIECE_TILE_SIZE as f32 * 0.9,
-                        PIECE_TILE_SIZE as f32 * 0.9,
+                        TILE_SIZE as f32 * 0.9,
+                        TILE_SIZE as f32 * 0.9,
                     ))),
                     MeshMaterial2d(materials.add(Color::from(AMBER_300))),
                     Transform::from_xyz(
-                        tile.x as f32 * PIECE_TILE_SIZE as f32,
-                        tile.y as f32 * PIECE_TILE_SIZE as f32,
+                        tile.x as f32 * TILE_SIZE as f32,
+                        tile.y as f32 * TILE_SIZE as f32,
                         0.0,
                     ),
                     TilePieceOf(b.target_entity()),
                 ));
             }
         });
-        e_cmd.observe(on_drag).observe(on_piece_drag_end);
-    }
-}
-
-#[cfg_attr(feature = "native_dev", hot)]
-fn on_drag(drag: Trigger<Pointer<Drag>>, mut tile_q: Query<&mut Transform>) {
-    let mut t = or_return!(tile_q.get_mut(drag.target()));
-    let delta = drag.delta * Vec2::new(1., -1.);
-    t.translation += delta.extend(0.);
-}
-
-#[cfg_attr(feature = "native_dev", hot)]
-fn on_piece_drag_end(
-    drag: Trigger<Pointer<DragEnd>>,
-    mut piece_q: Query<&mut Transform, With<Piece>>,
-) {
-    let mut t = or_return!(piece_q.get_mut(drag.target()));
-    let snapped_pos = ((t.translation.xy() / PIECE_TILE_SIZE as f32).round()
-        * PIECE_TILE_SIZE as f32)
-        .extend(t.translation.z);
-    // don't snap when the piece is too close to either axis
-    let max_dist = PIECE_TILE_SIZE as f32 * 0.4;
-    if (snapped_pos - t.translation).abs().max_element() < max_dist {
-        t.translation = snapped_pos;
     }
 }
 

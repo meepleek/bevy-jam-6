@@ -11,8 +11,8 @@ pub(super) fn plugin(app: &mut App) {
 }
 
 fn spawn_gameplay_screen(mut cmd: Commands) {
-    cmd.spawn(Board::new(9, 9));
-    cmd.spawn(Piece::cross());
+    cmd.spawn((Board::new(9, 9), Transform::from_xyz(300., 0., 0.)));
+    cmd.spawn((Piece::cross(), Transform::from_xyz(-400., 0., 0.)));
 }
 
 #[derive(Actionlike, Reflect, Copy, Clone, Eq, PartialEq, Hash, Debug)]

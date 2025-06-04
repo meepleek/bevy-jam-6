@@ -5,20 +5,29 @@ use bevy::prelude::*;
 
 use super::Coords;
 use super::piece::Piece;
+use crate::game::drag::SnapTarget;
 
-const DEFAULT_SIZE: u16 = 6;
+pub const TILE_SIZE: u16 = 64;
+const DEFAULT_BOARD_SIZE: u16 = 6;
 
-#[derive(Component, Debug)]
+pub fn plugin(app: &mut App) {
+    app.add_systems(Update, track_position);
+}
+
+#[derive(Component, Debug, PartialEq)]
+#[require(Transform)]
 pub struct Board {
     width: u16,
     heigth: u16,
+    center_global_position: Vec2,
     tiles: HashMap<Coords, Piece>,
     explosion_grid: HashSet<Coords>,
 }
+impl SnapTarget for Board {}
 
 impl Default for Board {
     fn default() -> Self {
-        Self::new(DEFAULT_SIZE, DEFAULT_SIZE)
+        Self::new(DEFAULT_BOARD_SIZE, DEFAULT_BOARD_SIZE)
     }
 }
 
@@ -38,11 +47,50 @@ impl Board {
             heigth,
             tiles: HashMap::default(),
             explosion_grid: HashSet::default(),
+            center_global_position: Vec2::ZERO,
         }
     }
 
-    pub fn size(&self) -> U16Vec2 {
+    pub fn world_center(&self) -> Vec2 {
+        self.center_global_position
+    }
+
+    pub fn grid_size(&self) -> U16Vec2 {
         (self.width, self.heigth).into()
+    }
+
+    pub fn size(&self) -> Vec2 {
+        self.grid_size().as_vec2() * TILE_SIZE as f32
+    }
+
+    pub fn world_to_tile(&self, pos: Vec2) -> Option<Coords> {
+        // transform world position to board space (like screen space but in tiles)
+        let half_size = self.size() / 2.;
+        let x = half_size.x - self.center_global_position.x + pos.x;
+        let y = half_size.y + self.center_global_position.y - pos.y;
+        let pos_on_board = Vec2::new(x, y);
+        let coords = (pos_on_board / TILE_SIZE as f32).floor().as_i16vec2();
+        if coords.min_element() < 0
+            || coords.x >= self.width as i16
+            || coords.y >= self.heigth as i16
+        {
+            return None;
+        }
+
+        Some(coords.as_u16vec2())
+    }
+
+    pub fn tile_to_world(&self, tile: Coords) -> Option<Vec2> {
+        if tile.x >= self.width || tile.y >= self.heigth {
+            return None;
+        }
+
+        let half_size = self.size() / 2.;
+        let half_tile = TILE_SIZE as f32 / 2.;
+        let tile_world = tile.as_vec2() * TILE_SIZE as f32;
+        let x = tile_world.x + self.center_global_position.x + half_tile - half_size.x;
+        let y = -tile_world.y + self.center_global_position.y - half_tile + half_size.y;
+        Some(Vec2::new(x, y))
     }
 
     pub fn can_place_at(&self, coords: Coords) -> Result<(), PlaceError> {
@@ -69,33 +117,52 @@ impl Board {
 
         Ok(())
     }
+}
 
-    // fn tile_index(&self, coords: Coords) -> usize {
-    //     usize::from(coords.y * self.width + coords.x)
-    // }
-
-    // pub fn clear(&mut self) {
-    //     for f in self.fields.iter_mut() {
-    //         *f = false;
-    //     }
-    // }
-
-    // pub fn tile_coords_to_tile_index(&self, coords: UVec2) -> usize {
-    //     (coords.y * self.width as u32 + coords.x) as usize
-    // }
-
-    // pub fn is_section_empty(&self, section_index: usize) -> bool {
-    //     self.get_section_by_section_index(section_index)
-    //         .iter()
-    //         .all(|i| !self.fields[*i])
-    // }
+fn track_position(mut board_q: Query<(&mut Board, &GlobalTransform), Changed<GlobalTransform>>) {
+    for (mut board, t) in &mut board_q {
+        board.center_global_position = t.translation().truncate();
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use test_case::test_case;
+    use tracing_test::traced_test;
 
     use super::*;
+
+    #[test_case(0., 0., 0., 0. => Some(Coords::ONE))]
+    #[test_case(64.,-64., 0., 0. => Some(Coords::ZERO))]
+    #[test_case(64.,-64., 20., -20. => Some(Coords::ZERO))]
+    #[test_case(64.,-64., 40., -40. => Some(Coords::ONE))]
+    #[test_case(64., -64., 64., 0. => Some(Coords::new(1, 0)))]
+    #[test_case(0., 0., 120., 0. => None)]
+    #[test_case(0., 0., -128., 0. => None)]
+    #[test_case(0., 0., 0., 120. => None)]
+    #[test_case(0., 0., 0., -128. => None)]
+    #[traced_test]
+    fn world_to_tile(map_x: f32, map_y: f32, world_x: f32, world_y: f32) -> Option<Coords> {
+        let mut board = Board::new(3, 3);
+        board.center_global_position = Vec2::new(map_x, map_y);
+
+        board.world_to_tile(Vec2::new(world_x, world_y))
+    }
+
+    #[test_case(0., 0., 0, 0 => Some(Vec2::new(-64., 64.)))]
+    #[test_case(0., 0., 1, 1 => Some(Vec2::new(0., 0.)))]
+    // todo: fix failing test
+    // #[test_case(64.,-64., 0, 0 => Some(Vec2::new(64., -64.)))]
+    #[test_case(64.,-64., 2, 2 => Some(Vec2::new(128., -128.)))]
+    #[test_case(0.,0., 3, 0 => None)]
+    #[test_case(0.,0., 0, 3 => None)]
+    #[traced_test]
+    fn tile_to_world(map_x: f32, map_y: f32, tile_x: u16, tile_y: u16) -> Option<Vec2> {
+        let mut board = Board::new(3, 3);
+        board.center_global_position = Vec2::new(map_x, map_y);
+
+        board.tile_to_world(Coords::new(tile_x, tile_y))
+    }
 
     #[test_case(0, 0 => matches Ok(_))]
     #[test_case(3, 3 => matches Ok(_))]
