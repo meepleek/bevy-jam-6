@@ -1,60 +1,69 @@
 use bevy::math::U16Vec2;
 use bevy::platform::collections::HashMap;
-use bevy::platform::collections::HashSet;
 use bevy::prelude::*;
 
 use super::Coords;
-use super::piece::Piece;
-use crate::game::drag::SnapHover;
-use crate::game::drag::SnapTarget;
-use crate::game::drag::Snappables;
 
 pub const TILE_SIZE: u16 = 64;
-const DEFAULT_BOARD_SIZE: u16 = 6;
 
 pub fn plugin(app: &mut App) {
     app.add_systems(Update, track_position);
 }
 
-#[derive(Component, Debug, PartialEq)]
-#[require(Transform, Snappables<Board>, Snappables<SnapHover>)]
-pub struct Board {
-    width: u16,
-    heigth: u16,
-    center_global_position: Vec2,
-    tiles: HashMap<Coords, Piece>,
-    explosion_grid: HashSet<Coords>,
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Piece {
+    Cross,
+    Circle,
+    Triangle,
+    // Square?
 }
-impl SnapTarget for Board {}
 
-impl Default for Board {
-    fn default() -> Self {
-        Self::new(DEFAULT_BOARD_SIZE, DEFAULT_BOARD_SIZE)
+impl Piece {
+    pub fn char(&self) -> char {
+        match &self {
+            Piece::Cross => 'x',
+            Piece::Circle => 'o',
+            Piece::Triangle => '▲',
+        }
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Component, Debug, PartialEq)]
+#[require(Transform)]
+pub struct Grid {
+    width: u16,
+    heigth: u16,
+    tile_size: u16,
+    center_global_position: Vec2,
+    tiles: HashMap<Coords, Piece>,
+}
+
+#[derive(Debug, PartialEq)]
 pub enum PlaceError {
     Taken,
     OutOfBounds,
 }
 
-impl Board {
-    pub fn new(width: u16, heigth: u16) -> Self {
+impl Grid {
+    pub fn new(width: u16, heigth: u16, tile_size: u16) -> Self {
         if width == 0 || heigth == 0 {
             panic!("Invalid dimension - no dimension can be 0");
         }
         Self {
             width,
             heigth,
+            tile_size,
             tiles: HashMap::default(),
-            explosion_grid: HashSet::default(),
             center_global_position: Vec2::ZERO,
         }
     }
 
     pub fn world_center(&self) -> Vec2 {
         self.center_global_position
+    }
+
+    pub fn tile_size(&self) -> u16 {
+        self.tile_size
     }
 
     pub fn grid_size(&self) -> U16Vec2 {
@@ -107,21 +116,13 @@ impl Board {
 
     pub fn place_piece(&mut self, piece: Piece, coords: Coords) -> Result<(), PlaceError> {
         self.can_place_at(coords)?;
-        for piece_tile in &piece.explosion_tiles() {
-            if let (Some(x), Some(y)) = (
-                coords.x.checked_add_signed(piece_tile.x),
-                coords.y.checked_add_signed(piece_tile.y),
-            ) {
-                self.explosion_grid.insert((x, y).into());
-            }
-        }
         self.tiles.insert(coords, piece);
 
         Ok(())
     }
 }
 
-fn track_position(mut board_q: Query<(&mut Board, &GlobalTransform), Changed<GlobalTransform>>) {
+fn track_position(mut board_q: Query<(&mut Grid, &GlobalTransform), Changed<GlobalTransform>>) {
     for (mut board, t) in &mut board_q {
         board.center_global_position = t.translation().truncate();
     }
@@ -145,7 +146,7 @@ mod tests {
     #[test_case(0., 0., 0., -128. => None)]
     #[traced_test]
     fn world_to_tile(map_x: f32, map_y: f32, world_x: f32, world_y: f32) -> Option<Coords> {
-        let mut board = Board::new(3, 3);
+        let mut board = Grid::new(3, 3, 64);
         board.center_global_position = Vec2::new(map_x, map_y);
 
         board.world_to_tile(Vec2::new(world_x, world_y))
@@ -160,7 +161,7 @@ mod tests {
     #[test_case(0.,0., 0, 3 => None)]
     #[traced_test]
     fn tile_to_world(map_x: f32, map_y: f32, tile_x: u16, tile_y: u16) -> Option<Vec2> {
-        let mut board = Board::new(3, 3);
+        let mut board = Grid::new(3, 3, 64);
         board.center_global_position = Vec2::new(map_x, map_y);
 
         board.tile_to_world(Coords::new(tile_x, tile_y))
@@ -174,57 +175,49 @@ mod tests {
     #[test_case(50, 0 => matches Err(PlaceError::OutOfBounds))]
     #[test_case(0, 50 => matches Err(PlaceError::OutOfBounds))]
     fn can_place_at_coords(x: u16, y: u16) -> Result<(), PlaceError> {
-        let board = Board::new(6, 9);
+        let board = Grid::new(6, 9, 32);
         board.can_place_at((x, y).into())
     }
 
     #[test_case(
         3,
-        Piece::cross(),
         Coords::ZERO,
         Coords::new(1, 0),
         "
-xxx
-xx.
+xo.
+...
 ...
 "
     )]
     #[test_case(
         3,
-        Piece::line(),
         Coords::new(1, 0),
         Coords::new(1, 2),
         "
-xxx
+.x.
 ...
-xxx
+.o.
 "
     )]
 
-    fn explosion_grid(
-        board_size: u16,
-        piece: Piece,
-        coords_1: Coords,
-        coords_2: Coords,
-        expected: &str,
-    ) {
-        let mut board = Board::new(board_size, board_size);
+    fn grid(board_size: u16, coords_1: Coords, coords_2: Coords, expected: &str) {
+        let mut board = Grid::new(board_size, board_size, 32);
         board
-            .place_piece(piece.clone(), coords_1)
+            .place_piece(Piece::Cross, coords_1)
             .expect("placed 1st piece");
         board
-            .place_piece(piece, coords_2)
+            .place_piece(Piece::Circle, coords_2)
             .expect("placed 2nd piece");
         let mut explosion_debug_grid = String::default();
 
         for y in 0..board.heigth {
             for x in 0..board.width {
                 let tile = Coords::new(x, y);
-                explosion_debug_grid.push(if board.explosion_grid.contains(&tile) {
-                    'x'
+                if let Some(piece) = board.tiles.get(&tile) {
+                    explosion_debug_grid.push(piece.char());
                 } else {
-                    '.'
-                });
+                    explosion_debug_grid.push('.');
+                }
             }
 
             if y < board_size - 1 {
@@ -238,9 +231,9 @@ xxx
     #[test]
     fn cannot_place_at_coords_when_taken() {
         let coords: Coords = (3, 3).into();
-        let mut board = Board::new(6, 6);
+        let mut board = Grid::new(6, 6, 32);
         board
-            .place_piece(Piece::Direction(Dir2::NORTH), coords)
+            .place_piece(Piece::Cross, coords)
             .expect("Place first piece");
 
         assert_eq!(board.can_place_at(coords), Err(PlaceError::Taken));

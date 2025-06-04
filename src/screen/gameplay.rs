@@ -1,5 +1,4 @@
-use crate::game::board::Board;
-use crate::game::piece::Piece;
+use crate::game::grid::Grid;
 use crate::menu::Menu;
 use crate::prelude::*;
 use crate::screen::Screen;
@@ -11,10 +10,7 @@ pub(super) fn plugin(app: &mut App) {
 }
 
 fn spawn_gameplay_screen(mut cmd: Commands) {
-    cmd.spawn((Board::new(9, 9), Transform::from_xyz(300., 0., 0.)));
-    cmd.spawn((Piece::cross(), Transform::from_xyz(-400., 200., 0.)));
-    cmd.spawn((Piece::cross_diag(), Transform::from_xyz(-400., 0., 0.)));
-    cmd.spawn((Piece::line(), Transform::from_xyz(-400., -200., 0.)));
+    cmd.spawn(Grid::new(25, 14, 48));
 }
 
 #[derive(Actionlike, Reflect, Copy, Clone, Eq, PartialEq, Hash, Debug)]
