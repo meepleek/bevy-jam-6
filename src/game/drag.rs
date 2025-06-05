@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use super::Coords;
-use super::board::Board;
+use super::board::Grid;
 use crate::prelude::*;
 
 pub const PIECE_TILE_SIZE: u16 = 64;
@@ -50,7 +50,7 @@ fn on_drag(
     drag: Trigger<Pointer<Drag>>,
     mut cmd: Commands,
     mut draggable_q: Query<(Entity, &mut Transform, Has<SnappedTo<SnapHover>>), With<Draggable>>,
-    board_q: Query<(Entity, &Board)>,
+    board_q: Query<(Entity, &Grid)>,
 ) {
     let (e, mut draggable_t, has_snap_hover) = or_return_quiet!(draggable_q.get_mut(drag.target()));
     let delta = drag.delta * Vec2::new(1., -1.);
@@ -90,7 +90,7 @@ fn on_drag(
 fn on_piece_drag_end(
     drag: Trigger<Pointer<DragEnd>>,
     mut draggable_q: Query<(&mut Transform, Option<&SnappedTo<SnapHover>>), With<Draggable>>,
-    board_q: Query<&Board>,
+    board_q: Query<&Grid>,
 ) {
     let (mut t, snap_hover) = or_return_quiet!(draggable_q.get_mut(drag.target()));
     let snap_hover = or_return_quiet!(snap_hover);

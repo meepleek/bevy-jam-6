@@ -1,6 +1,6 @@
 use bevy::ui::UiDebugOptions;
 
-use crate::game::board::Board;
+use crate::game::board::Grid;
 use crate::game::board::TILE_SIZE;
 use crate::prelude::*;
 
@@ -10,7 +10,7 @@ pub(super) fn plugin(app: &mut App) {
 }
 
 #[cfg_attr(feature = "native_dev", hot)]
-fn draw_board_grid(options: Res<UiDebugOptions>, mut gizmos: Gizmos, board_q: Query<&Board>) {
+fn draw_board_grid(options: Res<UiDebugOptions>, mut gizmos: Gizmos, board_q: Query<&Grid>) {
     if options.enabled {
         for board in board_q {
             gizmos
