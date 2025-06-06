@@ -133,17 +133,21 @@ pub fn trigger_default_on_event<TSourceEv: Event, B: Bundle, TTargetEv: Event + 
 fn on_card_click(
     t: Trigger<Pointer<Click>>,
     mut cmd: Commands,
-    card_selected_q: Query<(), With<CardSelected>>,
+    card_selected_q: Query<(Entity), With<CardSelected>>,
 ) {
-    let mut e_cmd = or_return!(cmd.get_entity(t.target()));
     if card_selected_q.contains(t.target()) {
         // deselect card
-        e_cmd
+        or_return!(cmd.get_entity(t.target()))
             .try_remove::<CardSelected>()
             .try_remove::<CardFocused>();
     } else {
+        // deselect other cards
+        for e in &card_selected_q {
+            or_continue_quiet!(cmd.get_entity(e)).try_remove::<CardSelected>();
+        }
+
         // select card
-        e_cmd.insert(CardSelected);
+        or_return!(cmd.get_entity(t.target())).insert(CardSelected);
     }
 }
 
