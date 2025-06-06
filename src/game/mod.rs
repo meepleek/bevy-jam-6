@@ -5,6 +5,7 @@ pub mod card;
 pub mod die;
 pub mod drag;
 pub mod grid;
+pub mod level;
 pub mod player;
 pub mod tile;
 
@@ -18,5 +19,6 @@ pub fn plugin(app: &mut App) {
         card::plugin,
         die::plugin,
         player::plugin,
+        level::plugin,
     ));
 }
