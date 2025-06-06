@@ -11,9 +11,17 @@ pub(super) fn plugin(app: &mut App) {
     app.configure::<GameplayAction>();
 }
 
-fn spawn_gameplay_screen(mut cmd: Commands) {
+fn spawn_gameplay_screen(mut cmd: Commands, mut meshes: ResMut<Assets<Mesh>>) {
     cmd.spawn((Grid::new(9, 9), Transform::from_xyz(300., 0., 0.)));
-    cmd.spawn(card(CardEffect::Move(1), Vec2::new(0., -200.)));
+
+    let card_hover_mesh = meshes.add(Rectangle::new(190., 570.));
+    for x in [-360., -180., 0., 180., 360.] {
+        cmd.spawn(card(
+            CardEffect::Move(1),
+            Vec2::new(x, -290.),
+            card_hover_mesh.clone(),
+        ));
+    }
 }
 
 #[derive(Actionlike, Reflect, Copy, Clone, Eq, PartialEq, Hash, Debug)]
