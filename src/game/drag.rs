@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use super::Coords;
-use super::board::Grid;
+use super::grid::Grid;
 use crate::prelude::*;
 
 pub const PIECE_TILE_SIZE: u16 = 64;

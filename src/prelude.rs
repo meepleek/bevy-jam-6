@@ -39,5 +39,6 @@ pub use crate::animation::tween;
 pub use crate::core::UpdateSystems;
 pub use crate::core::pause::PausableSystems;
 pub use crate::core::pause::Pause;
+pub use crate::game::Coords;
 pub use crate::theme::prelude::*;
 pub use crate::util::prelude::*;

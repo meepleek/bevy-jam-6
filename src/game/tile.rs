@@ -1,5 +1,3 @@
-use bevy::prelude::*;
-
 use crate::prelude::*;
 
 pub fn plugin(_app: &mut App) {}
@@ -8,6 +6,9 @@ pub fn plugin(_app: &mut App) {}
 pub enum Tile {
     Player,
 }
+
+#[derive(Component, Deref, DerefMut, Clone, Default)]
+pub struct TileCoords(Coords);
 
 // #[cfg_attr(feature = "native_dev", hot)]
 // fn on_piece_added(

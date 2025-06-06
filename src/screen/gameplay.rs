@@ -1,6 +1,7 @@
-// use crate::game::board::Grid;
 use crate::game::card::CardEffect;
 use crate::game::card::card;
+use crate::game::die::die;
+use crate::game::grid::Grid;
 use crate::menu::Menu;
 use crate::prelude::*;
 use crate::screen::Screen;
@@ -11,8 +12,9 @@ pub(super) fn plugin(app: &mut App) {
     app.configure::<GameplayAction>();
 }
 
+#[cfg_attr(feature = "native_dev", hot(rerun_on_hot_patch))]
 fn spawn_gameplay_screen(mut cmd: Commands, mut meshes: ResMut<Assets<Mesh>>) {
-    // cmd.spawn((Grid::new(9, 9), Transform::from_xyz(300., 0., 0.)));
+    cmd.spawn((Grid::new(9, 9), Transform::from_xyz(0., 0., 0.)));
 
     let card_hover_mesh = meshes.add(Rectangle::new(190., 570.));
     for i in -2..=2 {
@@ -27,6 +29,8 @@ fn spawn_gameplay_screen(mut cmd: Commands, mut meshes: ResMut<Assets<Mesh>>) {
             card_hover_mesh.clone(),
         ));
     }
+
+    cmd.spawn(die(ROSE_300, 5));
 }
 
 #[derive(Actionlike, Reflect, Copy, Clone, Eq, PartialEq, Hash, Debug)]

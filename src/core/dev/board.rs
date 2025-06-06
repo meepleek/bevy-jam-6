@@ -1,7 +1,7 @@
 use bevy::ui::UiDebugOptions;
 
-use crate::game::board::Grid;
-use crate::game::board::TILE_SIZE;
+use crate::game::grid::Grid;
+use crate::game::grid::TILE_SIZE;
 use crate::prelude::*;
 
 pub(super) fn plugin(app: &mut App) {
