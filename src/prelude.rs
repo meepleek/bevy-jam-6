@@ -5,7 +5,6 @@ pub use core::hash::Hash;
 pub use core::marker::PhantomData;
 pub use core::time::Duration;
 
-pub use avian2d::prelude::*;
 pub use bevy::audio::Volume;
 pub use bevy::color::palettes::tailwind::*;
 pub use bevy::diagnostic::FrameCount;

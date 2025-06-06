@@ -5,13 +5,7 @@ edition = "2024"
 # TODO: Workaround for <https://github.com/DioxusLabs/dioxus/issues/4160>.
 #default-run = "run"
 
-
 [dependencies]
-avian2d = { version = "0.3", default-features = false, features = [
-    "2d",
-    "f32",
-    "parry-f32",
-] }
 bevy = { version = "0.16", default-features = false, features = [
     # Core features
     "bevy_audio",
@@ -27,6 +21,7 @@ bevy = { version = "0.16", default-features = false, features = [
     #"default_font",
     "multi_threaded",
     "tonemapping_luts",
+    "bevy_gizmos",
 
     # Platform features
     "wayland",
@@ -98,8 +93,6 @@ getrandom = { git = "https://github.com/benfrankel/getrandom.git" }
 
 [features]
 dev = [
-    "avian2d/debug-plugin",
-    "avian2d/diagnostic_ui",
     "bevy/bevy_dev_tools",
     #"bevy/bevy_remote",
     "bevy/bevy_ui_debug",
@@ -111,7 +104,7 @@ dev = [
     "bevy/track_location",
     "pyri_state/debug",
 ]
-native = ["dep:dirs", "avian2d/parallel"]
+native = ["dep:dirs"]
 native_dev = [
     "native",
     "dev",

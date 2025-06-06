@@ -6,7 +6,6 @@ mod diagnostics;
 mod editor;
 #[cfg(feature = "native_dev")]
 mod hot_patch;
-mod physics;
 mod picking;
 mod state;
 mod ui;
@@ -23,7 +22,6 @@ pub(super) fn plugin(app: &mut App) {
         editor::plugin,
         #[cfg(feature = "native_dev")]
         hot_patch::plugin,
-        physics::plugin,
         picking::plugin,
         state::plugin,
         ui::plugin,
