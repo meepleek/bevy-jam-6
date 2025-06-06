@@ -1,6 +1,5 @@
 ## MVP
 
--   show cards
 -   add player die
 -   implement movement card
 -   add enemies

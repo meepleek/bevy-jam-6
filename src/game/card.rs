@@ -55,7 +55,10 @@ pub fn card(
                     },
                     CardRootOf(b.target_entity()),
                     Sprite::from_color(GRAY_600, Vec2::new(160., 240.)),
-                    children![Sprite::from_color(AMBER_100, Vec2::new(150., 230.)),],
+                    children![(
+                        Sprite::from_color(AMBER_100, Vec2::new(150., 230.)),
+                        Transform::from_xyz(0., 0., 0.05)
+                    )],
                 ))
                 .observe(on_card_pointer_over)
                 .observe(on_card_click);
