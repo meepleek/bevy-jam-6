@@ -15,10 +15,15 @@ fn spawn_gameplay_screen(mut cmd: Commands, mut meshes: ResMut<Assets<Mesh>>) {
     cmd.spawn((Grid::new(9, 9), Transform::from_xyz(300., 0., 0.)));
 
     let card_hover_mesh = meshes.add(Rectangle::new(190., 570.));
-    for x in [-360., -180., 0., 180., 360.] {
+    for i in -2..=2 {
         cmd.spawn(card(
             CardEffect::Move(1),
-            Vec2::new(x, -290.),
+            Vec3::new(
+                i as f32 * 150.,
+                -290. - (i as f32).abs() * 25.,
+                i as f32 / 10. + 1.,
+            ),
+            Rot2::degrees(i as f32 * -10.),
             card_hover_mesh.clone(),
         ));
     }

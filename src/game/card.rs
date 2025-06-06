@@ -28,10 +28,16 @@ pub struct CardRootOf(Entity);
 #[relationship_target(relationship = CardRootOf, linked_spawn)]
 pub struct CardVisuals(Entity);
 
-pub fn card(effect: CardEffect, position: Vec2, hover_mesh: Handle<Mesh>) -> impl Bundle {
+pub fn card(
+    effect: CardEffect,
+    position: Vec3,
+    rotation: Rot2,
+    hover_mesh: Handle<Mesh>,
+) -> impl Bundle {
     (
         Name::new("card_root"),
-        Transform::from_translation(position.extend(0.)),
+        Transform::from_translation(position)
+            .with_rotation(Quat::from_rotation_z(rotation.as_radians())),
         Visibility::default(),
         Mesh2d(hover_mesh),
         Pickable {
