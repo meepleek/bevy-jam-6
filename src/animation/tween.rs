@@ -424,3 +424,14 @@ macro_rules! relative_tween_fns {
 }
 
 pub(super) use relative_tween_fns;
+
+pub fn tween_sprite_color_on_trigger<E: Event, B: Bundle>(
+    color: impl Into<Color>,
+) -> impl FnMut(Trigger<E, B>, Commands) {
+    let color = color.into();
+    move |trig: Trigger<E, B>, mut cmd: Commands| {
+        let card_e = trig.target();
+        tiny_bail::or_return_quiet!(cmd.get_entity(card_e))
+            .insert(get_relative_sprite_color_anim(color, 200, None));
+    }
+}
