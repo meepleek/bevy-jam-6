@@ -4,6 +4,7 @@
 
 pub mod config;
 pub mod extend;
+pub mod initial;
 pub mod late_commands;
 pub mod math;
 pub mod patch;
@@ -17,6 +18,7 @@ pub mod prelude {
     pub use super::config::ConfigMut;
     pub use super::config::ConfigRef;
     pub use super::extend::prelude::*;
+    pub use super::initial::Initial;
     pub use super::late_commands::LateCommands;
     pub use super::patch::Patch;
     pub use super::previous::Previous;
@@ -26,5 +28,5 @@ pub mod prelude {
 use crate::prelude::*;
 
 pub(super) fn plugin(app: &mut App) {
-    app.add_plugins((late_commands::plugin, selection::plugin));
+    app.add_plugins((late_commands::plugin, selection::plugin, initial::plugin));
 }

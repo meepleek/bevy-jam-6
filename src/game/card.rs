@@ -21,6 +21,10 @@ pub struct Card {
     effect: CardEffect,
 }
 
+#[derive(Event, Default)]
+#[event(traversal = &'static ChildOf, auto_propagate)]
+pub struct CardPointerOut;
+
 #[derive(Component, Clone, Copy, PartialEq, Default)]
 pub struct CardFocused;
 
@@ -41,34 +45,47 @@ pub fn card(
     hover_mesh: Handle<Mesh>,
 ) -> impl Bundle {
     (
-        Name::new("card_root"),
-        Transform::from_translation(position)
-            .with_rotation(Quat::from_rotation_z(rotation.as_radians())),
+        Name::new("card"),
+        Card { effect },
+        Transform::from_translation(position),
         Visibility::default(),
-        Mesh2d(hover_mesh),
-        Pickable {
-            should_block_lower: false,
-            is_hoverable: true,
-        },
-        Patch(|b| {
-            b.observe(on_card_pointer_out);
+        Patch(move |b| {
             b.with_children(|b| {
                 b.spawn((
-                    Name::new("card"),
-                    Card { effect },
+                    // CardRootOf(b.target_entity()),
+                    Name::new("card_border"),
+                    Sprite::from_color(CARD_BORDER_COL, Vec2::new(160., 240.)),
                     Pickable {
                         should_block_lower: false,
                         is_hoverable: true,
                     },
-                    CardRootOf(b.target_entity()),
-                    Sprite::from_color(CARD_BORDER_COL, Vec2::new(160., 240.)),
+                    Transform::from_rotation(Quat::from_rotation_z(rotation.as_radians())),
+                    Visibility::default(),
                     children![(
+                        Name::new("card_content"),
                         Sprite::from_color(AMBER_100, Vec2::new(150., 230.)),
-                        Transform::from_xyz(0., 0., 0.05)
+                        Transform::from_xyz(0., 0., 0.05),
+                        Visibility::default(),
                     )],
+                ));
+
+                b.spawn((
+                    Name::new("card_hover_area"),
+                    Transform::from_xyz(0., -120., 0.),
+                    Visibility::default(),
+                    Mesh2d(hover_mesh),
+                    Pickable {
+                        should_block_lower: false,
+                        is_hoverable: true,
+                    },
                 ))
-                .observe(on_card_pointer_over)
-                .observe(on_card_pointer_out)
+                .observe(trigger_default_on_event::<Pointer<Out>, (), CardPointerOut>)
+                .observe(consume_event::<Pointer<Over>, ()>)
+                .observe(consume_event::<Pointer<Click>, ()>);
+            });
+
+            b.observe(insert_default_on_event::<Pointer<Over>, (), CardFocused>)
+                .observe(remove_on_event::<CardPointerOut, (), CardFocused>)
                 .observe(on_card_click)
                 .observe(move_focused_card)
                 .observe(move_unfocused_card)
@@ -80,24 +97,30 @@ pub fn card(
                 )
                 .observe(move_selected_card)
                 .observe(move_deselected_card);
-            });
         }),
     )
 }
 
-#[cfg_attr(feature = "native_dev", hot)]
-fn on_card_pointer_over(trig: Trigger<Pointer<Over>>, mut cmd: Commands) {
-    or_return_quiet!(cmd.get_entity(trig.target())).insert(CardFocused);
+pub fn consume_event<E: Event, B: Bundle>(mut trig: Trigger<E, B>) {
+    trig.propagate(false);
 }
 
-#[cfg_attr(feature = "native_dev", hot)]
-fn on_card_pointer_out(
-    trig: Trigger<Pointer<Out>>,
-    card_visuals_q: Query<&CardVisuals>,
+pub fn insert_default_on_event<E: Event, B: Bundle, C: Component + Default>(
+    trig: Trigger<E, B>,
     mut cmd: Commands,
 ) {
-    let card_e = or_return_quiet!(card_visuals_q.get(trig.target)).0;
-    or_return_quiet!(cmd.get_entity(card_e)).remove::<CardFocused>();
+    or_return_quiet!(cmd.get_entity(trig.target())).insert(C::default());
+}
+
+pub fn remove_on_event<E: Event, B: Bundle, C: Component>(trig: Trigger<E, B>, mut cmd: Commands) {
+    or_return_quiet!(cmd.get_entity(trig.target())).remove::<C>();
+}
+
+pub fn trigger_default_on_event<TSourceEv: Event, B: Bundle, TTargetEv: Event + Default>(
+    trig: Trigger<TSourceEv, B>,
+    mut cmd: Commands,
+) {
+    or_return_quiet!(cmd.get_entity(trig.target())).trigger(TTargetEv::default());
 }
 
 #[cfg_attr(feature = "native_dev", hot)]
@@ -122,14 +145,15 @@ fn on_card_click(
 fn move_focused_card(
     trig: Trigger<OnAdd, CardFocused>,
     mut cmd: Commands,
-    selected_q: Query<(), With<CardSelected>>,
+    card_q: Query<(&Initial<Transform>, Has<CardSelected>)>,
 ) {
     let card_e = trig.target();
-    if selected_q.contains(card_e) {
+    let (initial_t, is_selected) = or_return!(card_q.get(card_e));
+    if is_selected {
         return;
     }
     or_return_quiet!(cmd.get_entity(card_e)).insert(tween::get_relative_translation_anim(
-        Vec2::Y * 150.,
+        initial_t.translation.truncate().with_y(-150.),
         250,
         Some(EaseFunction::BackOut),
     ));
@@ -139,14 +163,19 @@ fn move_focused_card(
 fn move_unfocused_card(
     trig: Trigger<OnRemove, CardFocused>,
     mut cmd: Commands,
-    selected_q: Query<(), With<CardSelected>>,
+    card_q: Query<(&Initial<Transform>, Has<CardSelected>)>,
 ) {
     let card_e = trig.target();
-    if selected_q.contains(card_e) {
+    let (initial_t, is_selected) = or_return!(card_q.get(card_e));
+    if is_selected {
         return;
     }
     or_return!(cmd.get_entity(card_e)).insert(Animator::new(Tracks::new([
-        tween::get_relative_translation_tween(Vec2::ZERO, 250, Some(EaseFunction::BackOut)),
+        tween::get_relative_translation_tween(
+            initial_t.translation.truncate(),
+            250,
+            Some(EaseFunction::BackOut),
+        ),
         // reset size in case other interactions overlap
         get_relative_scale_tween(Vec2::splat(1.), 220, Some(EaseFunction::QuinticOut)),
     ])));
