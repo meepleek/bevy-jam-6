@@ -108,12 +108,12 @@ relative_tween_fns!(
 );
 
 relative_tween_fns!(
-    rotation,
+    z_rotation,
     Animator,
     Transform,
-    TransformRelativeRotationLens,
+    TransformRelativeZRotationLens,
     Quat,
-    Quat
+    f32
 );
 
 relative_tween_fns!(text_color, Animator, TextColor, TextColorLens, Color, Color);
@@ -145,10 +145,9 @@ relative_tween_fns!(
     Color
 );
 
-relative_lens!(Transform, Quat, TransformRelativeRotationLens, rotation);
-
 relative_lens_struct!(TransformRelativeScaleLens, Vec3, Vec2);
 relative_lens_struct!(TransformRelativePositionLens, Vec3, Vec2);
+relative_lens_struct!(TransformRelativeZRotationLens, Quat, f32);
 
 impl Lens<Transform> for TransformRelativeScaleLens {
     fn lerp(&mut self, target: &mut dyn Targetable<Transform>, ratio: f32) {
@@ -183,6 +182,24 @@ impl Lens<Transform> for TransformRelativePositionLens {
         _times_completed: i32,
     ) {
         self.start.get_or_insert_with(|| target.translation);
+    }
+}
+
+impl Lens<Transform> for TransformRelativeZRotationLens {
+    fn lerp(&mut self, target: &mut dyn Targetable<Transform>, ratio: f32) {
+        let start = self.start.unwrap();
+        let z = start.to_euler(EulerRot::XYZ).2;
+        let tweened_z = z + (self.end - z) * ratio;
+        target.rotation = Quat::from_rotation_z(tweened_z);
+    }
+
+    fn update_on_tween_start(
+        &mut self,
+        target: &mut dyn Targetable<Transform>,
+        _direction: TweeningDirection,
+        _times_completed: i32,
+    ) {
+        self.start.get_or_insert_with(|| target.rotation);
     }
 }
 
@@ -326,16 +343,6 @@ macro_rules! relative_lens {
 pub(super) use relative_lens;
 
 macro_rules! relative_tween_fns {
-    // ($name:ident, $animator: ty, $component:ty, $lens:ty, $value_start:ty, $value_end:ty) => {
-    //     relative_tween_fns(
-    //         $name,
-    //         $animator,
-    //         $component,
-    //         $lens,
-    //         $value_start,
-    //         $value_end,
-    //     );
-    // };
     ($name:ident, $animator: ty, $component:ty, $lens:ty, $value_start:ty, $value_end:ty) => {
         paste::paste! {
             pub fn [<get_absolute_ $name _tween>](

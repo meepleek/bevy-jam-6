@@ -86,6 +86,8 @@ pub fn card(
                 .observe(remove_on_event::<CardPointerOut, (), CardFocused>)
                 .observe(on_card_click)
                 .observe(move_focused_card)
+                .observe(rotate_focused_card)
+                .observe(rotate_unfocused_card)
                 .observe(move_unfocused_card)
                 .observe(tween::tween_related_sprite_color_on_trigger::<
                     OnAdd,
@@ -159,6 +161,35 @@ fn move_focused_card(
         250,
         Some(EaseFunction::BackOut),
     ));
+}
+
+#[cfg_attr(feature = "native_dev", hot)]
+fn rotate_focused_card(
+    trig: Trigger<OnAdd, CardFocused>,
+    mut cmd: Commands,
+    card_q: Query<&RotationRoot, Without<CardSelected>>,
+) {
+    let rotation_root = or_return_quiet!(card_q.get(trig.target()));
+    or_return_quiet!(cmd.get_entity(rotation_root.entity()))
+        .insert(tween::get_relative_z_rotation_anim(0., 250, None));
+}
+
+#[cfg_attr(feature = "native_dev", hot)]
+fn rotate_unfocused_card(
+    trig: Trigger<OnRemove, CardFocused>,
+    mut cmd: Commands,
+    card_q: Query<&RotationRoot, Without<CardSelected>>,
+    initial_trans_q: Query<&Initial<Transform>>,
+) {
+    let rotation_root = or_return_quiet!(card_q.get(trig.target()));
+    let initial_t = or_return!(initial_trans_q.get(rotation_root.entity()));
+    or_return_quiet!(cmd.get_entity(rotation_root.entity())).insert(
+        tween::get_relative_z_rotation_anim(
+            initial_t.rotation.to_euler(EulerRot::XYZ).2,
+            250,
+            None,
+        ),
+    );
 }
 
 #[cfg_attr(feature = "native_dev", hot)]
