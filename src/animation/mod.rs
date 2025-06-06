@@ -1,5 +1,6 @@
 pub mod backup;
 pub mod offset;
+pub mod tween;
 
 use bevy::ui::UiSystem;
 
@@ -8,7 +9,7 @@ use crate::prelude::*;
 pub(super) fn plugin(app: &mut App) {
     app.configure::<(SaveBackupSystems, PostTransformSystems, PostColorSystems)>();
 
-    app.add_plugins((backup::plugin, offset::plugin));
+    app.add_plugins((backup::plugin, offset::plugin, tween::plugin));
 }
 
 #[derive(SystemSet, Clone, Eq, PartialEq, Hash, Debug)]

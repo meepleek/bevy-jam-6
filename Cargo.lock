@@ -1061,12 +1061,14 @@ dependencies = [
  "bevy_simple_prefs",
  "bevy_simple_subsecond_system",
  "bevy_state",
+ "bevy_tweening",
  "dirs",
  "getrandom 0.3.3",
  "iyes_progress",
  "lazy-regex",
  "leafwing-input-manager",
  "log",
+ "paste",
  "pretty_assertions",
  "pyri_state",
  "pyri_tooltip",
@@ -1594,6 +1596,14 @@ name = "bevy_transform_interpolation"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "72c7c6c4e6a3d5415b3a29a17bd20c17cd0e2f068b96b24e263316d58d5346ea"
+dependencies = [
+ "bevy",
+]
+
+[[package]]
+name = "bevy_tweening"
+version = "0.13.0"
+source = "git+https://github.com/meepleek/bevy_tweening.git?rev=2e0742b11311feecc6eff3e583c54e738b2e67f7#2e0742b11311feecc6eff3e583c54e738b2e67f7"
 dependencies = [
  "bevy",
 ]
