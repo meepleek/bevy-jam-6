@@ -94,7 +94,7 @@ relative_tween_fns!(
     Transform,
     TransformRelativePositionLens,
     Vec3,
-    Vec3
+    Vec2
 );
 
 relative_tween_fns!(
@@ -103,7 +103,7 @@ relative_tween_fns!(
     Transform,
     TransformRelativeScaleLens,
     Vec3,
-    Vec3
+    Vec2
 );
 
 relative_tween_fns!(
@@ -144,9 +144,46 @@ relative_tween_fns!(
     Color
 );
 
-relative_lens!(Transform, Vec3, TransformRelativeScaleLens, scale);
-relative_lens!(Transform, Vec3, TransformRelativePositionLens, translation);
 relative_lens!(Transform, Quat, TransformRelativeRotationLens, rotation);
+
+relative_lens_struct!(TransformRelativeScaleLens, Vec3, Vec2);
+relative_lens_struct!(TransformRelativePositionLens, Vec3, Vec2);
+
+impl Lens<Transform> for TransformRelativeScaleLens {
+    fn lerp(&mut self, target: &mut dyn Targetable<Transform>, ratio: f32) {
+        let start = self.start.unwrap();
+        let start_2d = start.truncate();
+        let value = start_2d + (self.end - start_2d) * ratio;
+        target.scale = value.extend(start.z);
+    }
+
+    fn update_on_tween_start(
+        &mut self,
+        target: &mut dyn Targetable<Transform>,
+        _direction: TweeningDirection,
+        _times_completed: i32,
+    ) {
+        self.start.get_or_insert_with(|| target.scale);
+    }
+}
+
+impl Lens<Transform> for TransformRelativePositionLens {
+    fn lerp(&mut self, target: &mut dyn Targetable<Transform>, ratio: f32) {
+        let start = self.start.unwrap();
+        let start_2d = start.truncate();
+        let value = start_2d + (self.end - start_2d) * ratio;
+        target.translation = value.extend(start.z);
+    }
+
+    fn update_on_tween_start(
+        &mut self,
+        target: &mut dyn Targetable<Transform>,
+        _direction: TweeningDirection,
+        _times_completed: i32,
+    ) {
+        self.start.get_or_insert_with(|| target.translation);
+    }
+}
 
 #[derive(Default)]
 pub struct TransformRelativeByPositionLens {
@@ -206,9 +243,12 @@ pub fn lerp_color(from: Color, to: Color, ratio: f32) -> Color {
 
 macro_rules! relative_lens_struct {
     ($lens:ident, $value:ty) => {
+        relative_lens_struct!($lens, $value, $value);
+    };
+    ($lens:ident, $initial_value:ty, $value:ty) => {
         #[derive(Default)]
         pub struct $lens {
-            pub(super) start: Option<$value>,
+            pub(super) start: Option<$initial_value>,
             pub(super) end: $value,
         }
 
@@ -219,7 +259,7 @@ macro_rules! relative_lens_struct {
             }
 
             #[allow(dead_code)]
-            pub fn new(start: $value, end: $value) -> Self {
+            pub fn new(start: $initial_value, end: $value) -> Self {
                 Self {
                     start: Some(start),
                     end,
@@ -285,6 +325,16 @@ macro_rules! relative_lens {
 pub(super) use relative_lens;
 
 macro_rules! relative_tween_fns {
+    // ($name:ident, $animator: ty, $component:ty, $lens:ty, $value_start:ty, $value_end:ty) => {
+    //     relative_tween_fns(
+    //         $name,
+    //         $animator,
+    //         $component,
+    //         $lens,
+    //         $value_start,
+    //         $value_end,
+    //     );
+    // };
     ($name:ident, $animator: ty, $component:ty, $lens:ty, $value_start:ty, $value_end:ty) => {
         paste::paste! {
             pub fn [<get_absolute_ $name _tween>](

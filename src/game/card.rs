@@ -1,5 +1,4 @@
 use bevy_tweening::Animator;
-use bevy_tweening::RepeatStrategy;
 use bevy_tweening::Sequence;
 use bevy_tweening::Tracks;
 
@@ -50,12 +49,13 @@ pub fn card(
                 b.spawn((
                     Name::new("card"),
                     Card { effect },
-                    Sprite::from_color(AMBER_100, Vec2::new(160., 240.)),
                     Pickable {
                         should_block_lower: false,
                         is_hoverable: true,
                     },
                     CardRootOf(b.target_entity()),
+                    Sprite::from_color(GRAY_600, Vec2::new(160., 240.)),
+                    children![Sprite::from_color(AMBER_100, Vec2::new(150., 230.)),],
                 ))
                 .observe(on_card_pointer_over)
                 .observe(on_card_click);
@@ -67,7 +67,7 @@ pub fn card(
 #[cfg_attr(feature = "native_dev", hot)]
 fn on_card_pointer_over(t: Trigger<Pointer<Over>>, mut cmd: Commands) {
     or_return!(cmd.get_entity(t.target())).insert(tween::get_relative_translation_anim(
-        Vec3::Y * 150.,
+        Vec2::Y * 150.,
         250,
         Some(EaseFunction::BackOut),
     ));
@@ -85,13 +85,9 @@ fn on_card_pointer_out(
         return;
     }
     or_return!(cmd.get_entity(card_e)).insert(Animator::new(Tracks::new([
-        tween::get_relative_translation_tween(Vec3::ZERO, 250, Some(EaseFunction::BackOut)),
+        tween::get_relative_translation_tween(Vec2::ZERO, 250, Some(EaseFunction::BackOut)),
         // reset size in case
-        get_relative_scale_tween(
-            Vec2::splat(1.).extend(1.),
-            220,
-            Some(EaseFunction::QuinticOut),
-        ),
+        get_relative_scale_tween(Vec2::splat(1.), 220, Some(EaseFunction::QuinticOut)),
     ])));
 }
 
@@ -106,31 +102,15 @@ fn on_card_click(
     if card_selected_q.contains(t.target()) {
         e_cmd.remove::<CardSelected>();
         e_cmd.insert(Animator::new(Sequence::new([
-            get_relative_scale_tween(
-                Vec2::splat(0.8).extend(1.),
-                80,
-                Some(EaseFunction::QuadraticOut),
-            ),
-            get_relative_scale_tween(
-                Vec2::splat(1.).extend(1.),
-                260,
-                Some(EaseFunction::QuinticOut),
-            ),
+            get_relative_scale_tween(Vec2::splat(0.8), 80, Some(EaseFunction::QuadraticOut)),
+            get_relative_scale_tween(Vec2::splat(1.), 260, Some(EaseFunction::QuinticOut)),
         ])));
     } else {
         e_cmd.insert((
             CardSelected,
             Animator::new(Sequence::new([
-                get_relative_scale_tween(
-                    Vec2::splat(1.15).extend(1.),
-                    80,
-                    Some(EaseFunction::QuadraticOut),
-                ),
-                get_relative_scale_tween(
-                    Vec2::splat(1.).extend(1.),
-                    260,
-                    Some(EaseFunction::QuinticOut),
-                ),
+                get_relative_scale_tween(Vec2::splat(1.15), 80, Some(EaseFunction::QuadraticOut)),
+                get_relative_scale_tween(Vec2::splat(1.), 260, Some(EaseFunction::QuinticOut)),
             ])),
         ));
     }

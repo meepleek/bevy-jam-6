@@ -21,7 +21,7 @@ fn spawn_gameplay_screen(mut cmd: Commands, mut meshes: ResMut<Assets<Mesh>>) {
             Vec3::new(
                 i as f32 * 150.,
                 -290. - (i as f32).abs() * 25.,
-                i as f32 / 10. + 1.,
+                i as f32 / 5. + 1.,
             ),
             Rot2::degrees(i as f32 * -10.),
             card_hover_mesh.clone(),
