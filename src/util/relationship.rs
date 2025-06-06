@@ -1,0 +1,36 @@
+use bevy::prelude::*;
+
+pub trait RelationshipEntity {
+    fn entity(&self) -> Entity;
+}
+
+macro_rules! relationship_1_to_1 {
+    ($source:ident, $target:ident) => {
+        #[derive(Component)]
+        #[relationship(relationship_target = $target)]
+        pub struct $source(pub Entity);
+
+        #[allow(dead_code)]
+        impl RelationshipEntity for $source {
+            fn entity(&self) -> Entity {
+                self.0
+            }
+        }
+
+        #[derive(Component)]
+        #[relationship_target(relationship = $source, linked_spawn)]
+        pub struct $target(Entity);
+
+        #[allow(dead_code)]
+        impl RelationshipEntity for $target {
+            fn entity(&self) -> Entity {
+                self.0
+            }
+        }
+    };
+}
+
+pub(crate) use relationship_1_to_1;
+
+relationship_1_to_1!(ChildTranslation, TranslationRoot);
+relationship_1_to_1!(ChildRotation, RotationRoot);

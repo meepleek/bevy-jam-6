@@ -5,6 +5,7 @@ use bevy_tweening::Tracks;
 
 use crate::prelude::tween::get_relative_scale_tween;
 use crate::prelude::*;
+use crate::util;
 
 pub fn plugin(app: &mut App) {}
 
@@ -31,12 +32,7 @@ pub struct CardFocused;
 #[derive(Component, Clone, Copy, PartialEq, Default)]
 pub struct CardSelected;
 
-#[derive(Component)]
-#[relationship(relationship_target = CardVisuals)]
-pub struct CardRootOf(Entity);
-#[derive(Component)]
-#[relationship_target(relationship = CardRootOf, linked_spawn)]
-pub struct CardVisuals(Entity);
+util::relationship::relationship_1_to_1!(CardContent, CardContentRoot);
 
 pub fn card(
     effect: CardEffect,
@@ -60,9 +56,11 @@ pub fn card(
                         is_hoverable: true,
                     },
                     Transform::from_rotation(Quat::from_rotation_z(rotation.as_radians())),
+                    ChildRotation(b.target_entity()),
                     Visibility::default(),
                     children![(
                         Name::new("card_content"),
+                        CardContent(b.target_entity()),
                         Sprite::from_color(AMBER_100, Vec2::new(150., 230.)),
                         Transform::from_xyz(0., 0., 0.05),
                         Visibility::default(),
@@ -89,12 +87,16 @@ pub fn card(
                 .observe(on_card_click)
                 .observe(move_focused_card)
                 .observe(move_unfocused_card)
-                .observe(tween::tween_sprite_color_on_trigger::<OnAdd, CardFocused>(
-                    CARD_BORDER_COL_FOCUS,
-                ))
-                .observe(
-                    tween::tween_sprite_color_on_trigger::<OnRemove, CardFocused>(CARD_BORDER_COL),
-                )
+                .observe(tween::tween_related_sprite_color_on_trigger::<
+                    OnAdd,
+                    CardFocused,
+                    RotationRoot,
+                >(CARD_BORDER_COL_FOCUS))
+                .observe(tween::tween_related_sprite_color_on_trigger::<
+                    OnRemove,
+                    CardFocused,
+                    RotationRoot,
+                >(CARD_BORDER_COL))
                 .observe(move_selected_card)
                 .observe(move_deselected_card);
         }),

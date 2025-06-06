@@ -3,6 +3,7 @@
 use std::marker::PhantomData;
 use std::time::Duration;
 
+use bevy::ecs::relationship::Relationship;
 use bevy::prelude::*;
 use bevy_tweening::*;
 
@@ -425,13 +426,30 @@ macro_rules! relative_tween_fns {
 
 pub(super) use relative_tween_fns;
 
+use crate::prelude::RelationshipEntity;
+
 pub fn tween_sprite_color_on_trigger<E: Event, B: Bundle>(
     color: impl Into<Color>,
 ) -> impl FnMut(Trigger<E, B>, Commands) {
     let color = color.into();
-    move |trig: Trigger<E, B>, mut cmd: Commands| {
+    move |trig, mut cmd| {
         let card_e = trig.target();
         tiny_bail::or_return_quiet!(cmd.get_entity(card_e))
+            .insert(get_relative_sprite_color_anim(color, 200, None));
+    }
+}
+
+pub fn tween_related_sprite_color_on_trigger<
+    E: Event,
+    B: Bundle,
+    TSpriteRelationship: Component + RelationshipEntity,
+>(
+    color: impl Into<Color>,
+) -> impl FnMut(Trigger<E, B>, Commands, Query<&TSpriteRelationship>) {
+    let color = color.into();
+    move |trig, mut cmd, entity_q| {
+        let e = tiny_bail::or_return!(entity_q.get(trig.target())).entity();
+        tiny_bail::or_return_quiet!(cmd.get_entity(e))
             .insert(get_relative_sprite_color_anim(color, 200, None));
     }
 }
