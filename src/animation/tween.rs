@@ -3,7 +3,6 @@
 use std::marker::PhantomData;
 use std::time::Duration;
 
-use bevy::ecs::relationship::Relationship;
 use bevy::prelude::*;
 use bevy_tweening::*;
 
@@ -61,6 +60,8 @@ pub(super) fn plugin(app: &mut App) {
         (
             component_animator_system::<BackgroundColor>,
             despawn_after_tween,
+            process_priority_tween::<Transform>,
+            process_priority_tween::<()>,
         ),
     );
 }
@@ -77,6 +78,21 @@ fn despawn_after_tween(
                 DespawnOnTweenCompleted::Entity(e) => *e,
             };
             cmd.entity(e).despawn();
+        }
+    }
+}
+
+#[derive(Component, Default)]
+pub struct PriorityTween<T = ()>(PhantomData<T>);
+
+fn process_priority_tween<T: Send + Sync + 'static>(
+    mut cmd: Commands,
+    mut ev_r: EventReader<TweenCompleted>,
+    despawn_q: Query<(), With<PriorityTween<T>>>,
+) {
+    for ev in ev_r.read() {
+        if despawn_q.contains(ev.entity) {
+            cmd.entity(ev.entity).remove::<PriorityTween<T>>();
         }
     }
 }

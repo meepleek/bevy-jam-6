@@ -3,7 +3,9 @@ use bevy_tweening::BoxedTweenable;
 use bevy_tweening::Sequence;
 use bevy_tweening::Tracks;
 
+use crate::prelude::tween::PriorityTween;
 use crate::prelude::tween::get_relative_scale_tween;
+use crate::prelude::tween::get_relative_translation_tween;
 use crate::prelude::*;
 use crate::util;
 
@@ -149,7 +151,7 @@ fn on_card_click(
 fn move_focused_card(
     trig: Trigger<OnAdd, CardFocused>,
     mut cmd: Commands,
-    card_q: Query<(&Initial<Transform>, Has<CardSelected>)>,
+    card_q: Query<(&Initial<Transform>, Has<CardSelected>), Without<PriorityTween<Transform>>>,
 ) {
     let card_e = trig.target();
     let (initial_t, is_selected) = or_return!(card_q.get(card_e));
@@ -196,10 +198,10 @@ fn rotate_unfocused_card(
 fn move_unfocused_card(
     trig: Trigger<OnRemove, CardFocused>,
     mut cmd: Commands,
-    card_q: Query<(&Initial<Transform>, Has<CardSelected>)>,
+    card_q: Query<(&Initial<Transform>, Has<CardSelected>), Without<PriorityTween<Transform>>>,
 ) {
     let card_e = trig.target();
-    let (initial_t, is_selected) = or_return!(card_q.get(card_e));
+    let (initial_t, is_selected) = or_return_quiet!(card_q.get(card_e));
     if is_selected {
         return;
     }
@@ -216,26 +218,48 @@ fn move_unfocused_card(
 
 #[cfg_attr(feature = "native_dev", hot)]
 fn move_selected_card(trig: Trigger<OnAdd, CardSelected>, mut cmd: Commands) {
-    or_return!(cmd.get_entity(trig.target())).insert(Animator::new(
-        get_relative_scale_tween(Vec2::splat(1.15), 80, Some(EaseFunction::QuadraticOut)).then(
-            get_relative_scale_tween(Vec2::splat(1.), 260, Some(EaseFunction::QuinticOut)),
-        ),
-    ));
+    or_return!(cmd.get_entity(trig.target())).insert(Animator::new(Tracks::new([
+        Box::new(get_relative_translation_tween(
+            Vec2::new(-400., 0.),
+            350,
+            Some(EaseFunction::BackOut),
+        )) as BoxedTweenable<_>,
+        get_relative_scale_tween(Vec2::splat(1.15), 80, Some(EaseFunction::QuadraticOut))
+            .then(get_relative_scale_tween(
+                Vec2::splat(1.),
+                260,
+                Some(EaseFunction::QuinticOut),
+            ))
+            .into(),
+    ])));
 }
 
 #[cfg_attr(feature = "native_dev", hot)]
-fn move_deselected_card(trig: Trigger<OnRemove, CardSelected>, mut cmd: Commands) {
-    or_return!(cmd.get_entity(trig.target())).insert(Animator::new(Tracks::new([
-        tween::get_relative_translation_tween(Vec2::ZERO, 250, Some(EaseFunction::BackOut)).into(),
-        Box::new(Sequence::new([get_relative_scale_tween(
-            Vec2::splat(0.8),
-            80,
-            Some(EaseFunction::QuadraticOut),
-        )
-        .then(get_relative_scale_tween(
-            Vec2::splat(1.),
-            260,
-            Some(EaseFunction::QuinticOut),
-        ))])) as BoxedTweenable<_>,
-    ])));
+fn move_deselected_card(
+    trig: Trigger<OnRemove, CardSelected>,
+    mut cmd: Commands,
+    initial_trans_q: Query<&Initial<Transform>>,
+) {
+    let initial_t = or_return!(initial_trans_q.get(trig.target()));
+    or_return!(cmd.get_entity(trig.target())).insert((
+        Animator::new(Tracks::new([
+            tween::get_relative_translation_tween(
+                initial_t.translation.truncate(),
+                400,
+                Some(EaseFunction::BackOut),
+            )
+            .into(),
+            Box::new(Sequence::new([get_relative_scale_tween(
+                Vec2::splat(0.8),
+                80,
+                Some(EaseFunction::QuadraticOut),
+            )
+            .then(get_relative_scale_tween(
+                Vec2::splat(1.),
+                260,
+                Some(EaseFunction::QuinticOut),
+            ))])) as BoxedTweenable<_>,
+        ])),
+        PriorityTween::<Transform>::default(),
+    ));
 }
