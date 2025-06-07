@@ -4,6 +4,9 @@ use bevy_tweening::Sequence;
 use bevy_tweening::Tracks;
 
 use crate::game::card_effect::CardAction;
+use crate::game::pile::CardsInHand;
+use crate::game::pile::HandCard;
+use crate::game::pile::HandCardObserver;
 use crate::prelude::tween::PriorityTween;
 use crate::prelude::tween::get_relative_scale_tween;
 use crate::prelude::tween::get_relative_translation_tween;
@@ -79,29 +82,34 @@ pub fn card(
                 .observe(trigger_default_on_event::<Pointer<Out>, (), CardPointerOut>)
                 .observe(consume_event::<Pointer<Over>, ()>)
                 .observe(consume_event::<Pointer<Click>, ()>);
-            });
-
-            b.observe(insert_default_on_event::<Pointer<Over>, (), CardFocused>)
-                .observe(remove_on_event::<CardPointerOut, (), CardFocused>)
-                .observe(on_card_click)
-                .observe(move_focused_card)
-                .observe(rotate_focused_card)
-                .observe(rotate_unfocused_card)
-                .observe(move_unfocused_card)
-                .observe(tween::tween_related_sprite_color_on_trigger::<
-                    OnAdd,
-                    CardFocused,
-                    RotationRoot,
-                >(CARD_BORDER_COL_FOCUS))
-                .observe(tween::tween_related_sprite_color_on_trigger::<
-                    OnRemove,
-                    CardFocused,
-                    RotationRoot,
-                >(CARD_BORDER_COL))
-                .observe(move_selected_card)
-                .observe(move_deselected_card);
+            })
+            .observe(on_card_added_to_hand);
         }),
     )
+}
+
+fn on_card_added_to_hand(trig: Trigger<OnAdd, HandCard>, mut cmd: Commands) {
+    debug!("card added to hand");
+    or_return!(cmd.get_entity(trig.target()))
+        .observe(insert_default_on_event::<Pointer<Over>, (), CardFocused>)
+        .observe(remove_on_event::<CardPointerOut, (), CardFocused>)
+        .observe(on_card_click)
+        .observe(move_focused_card)
+        .observe(rotate_focused_card)
+        .observe(rotate_unfocused_card)
+        .observe(move_unfocused_card)
+        .observe(tween::tween_related_sprite_color_on_trigger::<
+            OnAdd,
+            CardFocused,
+            RotationRoot,
+        >(CARD_BORDER_COL_FOCUS))
+        .observe(tween::tween_related_sprite_color_on_trigger::<
+            OnRemove,
+            CardFocused,
+            RotationRoot,
+        >(CARD_BORDER_COL))
+        .observe(move_selected_card)
+        .observe(move_deselected_card);
 }
 
 #[cfg_attr(feature = "native_dev", hot)]

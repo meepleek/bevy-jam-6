@@ -1,6 +1,10 @@
 ## MVP
 
--   implement movement card
+-   discard pile
+-   draw pile
+-   lower pips on actions
 -   add enemies
--   implement attack
--   implement attack chaining
+-   attack action
+-   attack chaining
+-   enemy movement
+-   enemy attacks

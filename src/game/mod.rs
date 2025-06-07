@@ -8,6 +8,7 @@ pub mod die;
 pub mod drag;
 pub mod grid;
 pub mod level;
+pub mod pile;
 pub mod player;
 pub mod tile;
 
@@ -23,6 +24,7 @@ pub fn plugin(app: &mut App) {
         player::plugin,
         level::plugin,
         card_effect::plugin,
+        pile::plugin,
         action::plugin,
     ));
 }

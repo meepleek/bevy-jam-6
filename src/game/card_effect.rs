@@ -1,6 +1,9 @@
 use std::ops::RangeInclusive;
 
 use crate::game::action::*;
+use crate::game::pile::CardsInHand;
+use crate::game::pile::DiscardCard;
+use crate::game::pile::DiscardPile;
 use crate::prelude::*;
 
 pub(super) fn plugin(app: &mut App) {
@@ -150,11 +153,12 @@ pub struct PlaySelectedTileCard(pub Coords);
 
 fn play_selected_tile_card(
     trig: Trigger<PlaySelectedTileCard>,
-    card: Single<(Entity, &Card), With<CardSelected>>,
+    selected_card: Single<(Entity, &Card), With<CardSelected>>,
     player: Single<Entity, With<Player>>,
+    discard_pile: Single<Entity, With<DiscardPile>>,
     mut cmd: Commands,
 ) {
-    let (card_e, card) = card.into_inner();
+    let (card_e, card) = selected_card.into_inner();
     match &card.action {
         CardAction::Move { pip_cost, .. } => cmd.trigger(MoveAction {
             agent_e: *player,
@@ -171,7 +175,10 @@ fn play_selected_tile_card(
         _ => {},
     }
 
-    or_return!(cmd.get_entity(card_e)).try_remove::<CardSelected>();
+    or_return!(cmd.get_entity(card_e))
+        .try_remove::<CardSelected>()
+        .try_remove::<CardsInHand>()
+        .try_insert(DiscardCard(discard_pile.into_inner()));
     // todo: move card to discard
     // or just remove them in case the cards are also a timer?
 }
