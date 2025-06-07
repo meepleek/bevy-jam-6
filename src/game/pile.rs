@@ -186,8 +186,10 @@ fn restore_empty_piles<T: RelationshipTarget>(trig: Trigger<OnRemove, T>, mut cm
 fn check_hand_size(
     piles_q: Query<(Entity, &DrawPile, &CardsInHand, &DiscardPile), Changed<CardsInHand>>,
     mut cmd: Commands,
+    rotation_q: Query<&RotationRoot, Without<CardSelected>>,
 ) {
     let (piles_e, draw, hand, discard) = or_return_quiet!(piles_q.single());
+    info!("thingy!");
     if hand.is_empty() {
         info!("draw new cards pls!");
         let mut to_draw = Vec::new();
@@ -213,6 +215,22 @@ fn check_hand_size(
         }
         for e in to_draw {
             or_continue!(cmd.get_entity(e)).try_insert(HandCard(piles_e));
+        }
+    } else {
+        // hand cards have changed => just tween their positions
+        let anim_dur_ms = 200;
+        let mut rng = thread_rng();
+        for (i, e) in hand.entities().iter().enumerate() {
+            let pos = hand_card_pos_with_offset(i, hand.len(), &mut rng);
+            let rot = hand_card_rot_with_offset(i, hand.len(), &mut rng);
+            or_return_quiet!(cmd.get_entity(*e)).insert(tween::get_relative_translation_anim(
+                pos.truncate(),
+                anim_dur_ms,
+                None,
+            ));
+            let rotation_root = or_return_quiet!(rotation_q.get(*e));
+            or_return_quiet!(cmd.get_entity(rotation_root.entity()))
+                .insert(tween::get_relative_z_rotation_anim(rot, anim_dur_ms, None));
         }
     }
 }
