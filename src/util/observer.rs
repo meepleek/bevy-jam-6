@@ -30,9 +30,10 @@ pub fn remove_observers_for_watched_entity(
     observer_q: Query<(Entity, &Observer)>,
     entity: Entity,
 ) {
-    for (observer_e, observer) in observer_q.iter() {
-        if observer.descriptor().entities().contains(&entity) {
-            or_continue!(commands.get_entity(observer_e)).try_despawn();
-        }
+    for (observer_e, _) in observer_q
+        .iter()
+        .filter(|(_, observer)| observer.descriptor().entities().contains(&entity))
+    {
+        or_continue!(commands.get_entity(observer_e)).try_despawn();
     }
 }
