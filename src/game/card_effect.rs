@@ -52,10 +52,29 @@ impl CardAction {
                     EffectReach::Range(max) => 1..=max as i16,
                 };
                 match direction {
-                    EffectDirection::Area => range
-                        .clone()
-                        .flat_map(|y| range.clone().map(move |x| (x, y).into()))
-                        .collect(),
+                    EffectDirection::Area => match *reach {
+                        EffectReach::Exact(val) => {
+                            let val = val as i16;
+                            let range = -val..=val;
+                            let mut res = HashSet::with_capacity(val as usize * 2 * 5);
+                            res.extend(
+                                range
+                                    .clone()
+                                    .flat_map(|x| [-val, val].map(|y| Coords::new(x, y))),
+                            );
+                            res.extend(range.flat_map(|y| [-val, val].map(|x| Coords::new(x, y))));
+                            res.into_iter().collect()
+                        },
+                        EffectReach::Range(max) => {
+                            let max = max as i16;
+                            let range = -max..=max;
+                            range
+                                .clone()
+                                .flat_map(|y| range.clone().map(move |x| (x, y).into()))
+                                .filter(|tile| tile != &Coords::ZERO)
+                                .collect()
+                        },
+                    },
                     EffectDirection::Orthogonal => range
                         .flat_map(|i| {
                             [(0, -1), (0, 1), (-1, 0), (1, 0)]
