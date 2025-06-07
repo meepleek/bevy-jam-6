@@ -1,5 +1,4 @@
 use crate::game::tile::TileCoords;
-use crate::prelude::tween::get_relative_translation_anim;
 use crate::prelude::*;
 
 pub(super) fn plugin(app: &mut App) {
@@ -17,7 +16,7 @@ fn move_action(trig: Trigger<MoveAction>, mut cmd: Commands, grid: Single<&Grid>
     // todo: remove pips
     let pos = or_return!(grid.tile_to_world(trig.target_tile));
     or_return!(cmd.get_entity(trig.agent_e)).insert((
-        get_relative_translation_anim(pos, 300, Some(EaseFunction::BackIn)),
+        tween::get_relative_translation_anim(pos, 300, Some(EaseFunction::BackIn)),
         TileCoords(trig.target_tile),
     ));
 }

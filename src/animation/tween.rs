@@ -115,6 +115,15 @@ relative_tween_fns!(
 );
 
 relative_tween_fns!(
+    translation_3d,
+    Animator,
+    Transform,
+    TransformRelativePositionVec3Lens,
+    Vec3,
+    Vec3
+);
+
+relative_tween_fns!(
     scale,
     Animator,
     Transform,
@@ -159,6 +168,13 @@ relative_tween_fns!(
     ColorMaterialRelativeColorLens,
     Color,
     Color
+);
+
+relative_lens!(
+    Transform,
+    Vec3,
+    TransformRelativePositionVec3Lens,
+    translation
 );
 
 relative_lens_struct!(TransformRelativeScaleLens, Vec3, Vec2);

@@ -1,3 +1,4 @@
+use bevy::math::VectorSpace;
 use bevy::time::common_conditions::repeating_after_delay;
 use bevy_tweening::Animator;
 use bevy_tweening::BoxedTweenable;
@@ -16,6 +17,8 @@ relationship_1_to_n!(HandCard, CardsInHand);
 relationship_1_to_n!(DiscardPileCard, DiscardPile);
 
 pub const START_HAND_SIZE: u8 = 3;
+
+const FOCUSED_CARD_Y: f32 = -220.;
 
 pub(super) fn plugin(app: &mut App) {
     app.add_observer(card_added_to_draw)
@@ -67,18 +70,15 @@ fn discard_pile_card_pos_rot(rng: &mut ThreadRng, card_pile_order: i16) -> (Vec3
 fn card_added_to_draw(
     trig: Trigger<OnAdd, DrawPileCard>,
     mut cmd: Commands,
-    trans_q: Query<&Transform>,
     card_rot_q: Query<&RotationRoot>,
     draw_pile: Single<&DrawPile>,
 ) {
-    let card_t = or_return!(trans_q.get(trig.target()));
     let mut rng = thread_rng();
     let anim_dur_ms = 300;
     let (new_pos, new_angle) = draw_pile_card_pos_rot(&mut rng, draw_pile.len() as i16);
 
-    or_return!(cmd.get_entity(trig.target())).insert(tween::get_absolute_translation_anim(
-        card_t.translation.with_z(new_pos.z),
-        new_pos.truncate(),
+    or_return!(cmd.get_entity(trig.target())).insert(tween::get_relative_translation_3d_anim(
+        new_pos,
         anim_dur_ms,
         None,
     ));
@@ -90,7 +90,50 @@ fn card_added_to_draw(
     ));
 }
 
-fn card_added_to_hand(trig: Trigger<OnAdd, HandCard>, mut cmd: Commands) {
+fn card_index_mult(card_index: usize, pile_size: usize) -> f32 {
+    card_index as f32 - (pile_size / 2) as f32
+}
+
+fn card_index_from_slice(entities: &[Entity], entity: Entity) -> usize {
+    entities.iter().position(|e| *e == entity).unwrap_or(0)
+}
+
+fn hand_card_pos(card_index: usize, pile_size: usize) -> Vec3 {
+    let pos_mult = card_index_mult(card_index, pile_size);
+    Vec3::new(
+        pos_mult * 150.,
+        -290. - pos_mult.abs() * 25.,
+        pos_mult / 10. + 1.,
+    )
+}
+
+fn hand_card_pos_with_offset(card_index: usize, pile_size: usize, rng: &mut ThreadRng) -> Vec3 {
+    let max_offset = 10f32;
+    hand_card_pos(card_index, pile_size)
+        + Vec3::new(
+            rng.gen_range(-max_offset..max_offset),
+            rng.gen_range(-max_offset..max_offset),
+            0.,
+        )
+}
+
+fn hand_card_rot(card_index: usize, pile_size: usize) -> f32 {
+    let i = card_index_mult(card_index, pile_size);
+    (-10. * i).to_radians()
+}
+
+fn hand_card_rot_with_offset(card_index: usize, pile_size: usize, rng: &mut ThreadRng) -> f32 {
+    let max_rot_offset = 5f32;
+    hand_card_rot(card_index, pile_size)
+        + rng.gen_range(-max_rot_offset..max_rot_offset).to_radians()
+}
+
+fn card_added_to_hand(
+    trig: Trigger<OnAdd, HandCard>,
+    mut cmd: Commands,
+    hand: Single<&CardsInHand>,
+    rotation_q: Query<&RotationRoot>,
+) {
     debug!("card added to hand");
     or_return!(cmd.get_entity(trig.target()))
         .observe(insert_default_on_event::<Pointer<Over>, (), CardFocused>)
@@ -112,6 +155,27 @@ fn card_added_to_hand(trig: Trigger<OnAdd, HandCard>, mut cmd: Commands) {
         >(CARD_BORDER_COL))
         .observe(move_selected_card)
         .observe(move_deselected_card);
+
+    let animation_duration = 300;
+    let mut rng = thread_rng();
+    let mut whole_hand = hand.entities().to_vec();
+    // new card is not in the target pile yet
+    whole_hand.push(trig.target());
+    for (i, e) in whole_hand.iter().enumerate() {
+        let pos = hand_card_pos_with_offset(i, whole_hand.len(), &mut rng);
+        let rot = hand_card_rot_with_offset(i, whole_hand.len(), &mut rng);
+        or_continue!(cmd.get_entity(*e)).try_insert(tween::get_relative_translation_3d_anim(
+            pos,
+            animation_duration,
+            Some(EaseFunction::BackOut),
+        ));
+        let rot_e = or_continue!(rotation_q.get(*e)).entity();
+        or_continue!(cmd.get_entity(rot_e)).try_insert(tween::get_relative_z_rotation_anim(
+            rot,
+            animation_duration,
+            None,
+        ));
+    }
 }
 
 fn restore_empty_piles<T: RelationshipTarget>(trig: Trigger<OnRemove, T>, mut cmd: Commands) {
@@ -157,17 +221,14 @@ fn card_added_to_discard(
     trig: Trigger<OnAdd, DiscardPileCard>,
     mut cmd: Commands,
     observer_q: Query<(Entity, &Observer)>,
-    trans_q: Query<&Transform>,
     card_rot_q: Query<&RotationRoot>,
     discard: Single<&DiscardPile>,
 ) {
     let anim_dur_ms = 300;
-    let card_t = or_return!(trans_q.get(trig.target()));
     let mut rng = thread_rng();
     let (new_pos, new_rot) = discard_pile_card_pos_rot(&mut rng, discard.len() as i16);
-    or_return!(cmd.get_entity(trig.target())).insert(tween::get_absolute_translation_anim(
-        card_t.translation.with_z(new_pos.z),
-        new_pos.truncate(),
+    or_return!(cmd.get_entity(trig.target())).insert(tween::get_relative_translation_3d_anim(
+        new_pos,
         anim_dur_ms,
         None,
     ));
@@ -206,15 +267,19 @@ fn on_card_click(
 fn move_focused_card(
     trig: Trigger<OnAdd, CardFocused>,
     mut cmd: Commands,
-    card_q: Query<(&Initial<Transform>, Has<CardSelected>), Without<PriorityTween<Transform>>>,
+    card_q: Query<Has<CardSelected>, Without<PriorityTween<Transform>>>,
+    hand: Single<&CardsInHand>,
 ) {
     let card_e = trig.target();
-    let (initial_t, is_selected) = or_return!(card_q.get(card_e));
+    let is_selected = or_return!(card_q.get(card_e));
     if is_selected {
         return;
     }
+    let i = card_index_from_slice(hand.entities(), trig.target());
+    let pos = hand_card_pos(i, hand.len());
+
     or_return_quiet!(cmd.get_entity(card_e)).insert(tween::get_relative_translation_anim(
-        initial_t.translation.truncate().with_y(-150.),
+        pos.truncate().with_y(FOCUSED_CARD_Y),
         250,
         Some(EaseFunction::BackOut),
     ));
@@ -236,36 +301,33 @@ fn rotate_unfocused_card(
     trig: Trigger<OnRemove, CardFocused>,
     mut cmd: Commands,
     card_q: Query<&RotationRoot, Without<CardSelected>>,
-    initial_trans_q: Query<&Initial<Transform>>,
+    hand: Single<&CardsInHand>,
 ) {
     let rotation_root = or_return_quiet!(card_q.get(trig.target()));
-    let initial_t = or_return!(initial_trans_q.get(rotation_root.entity()));
-    or_return_quiet!(cmd.get_entity(rotation_root.entity())).insert(
-        tween::get_relative_z_rotation_anim(
-            initial_t.rotation.to_euler(EulerRot::XYZ).2,
-            250,
-            None,
-        ),
-    );
+    let i = card_index_from_slice(hand.entities(), trig.target());
+    let rot = hand_card_rot_with_offset(i, hand.len(), &mut thread_rng());
+
+    or_return_quiet!(cmd.get_entity(rotation_root.entity()))
+        .insert(tween::get_relative_z_rotation_anim(rot, 250, None));
 }
 
 #[cfg_attr(feature = "native_dev", hot)]
 fn move_unfocused_card(
     trig: Trigger<OnRemove, CardFocused>,
     mut cmd: Commands,
-    card_q: Query<(&Initial<Transform>, Has<CardSelected>), Without<PriorityTween<Transform>>>,
+    card_q: Query<Has<CardSelected>, Without<PriorityTween<Transform>>>,
+    hand: Single<&CardsInHand>,
 ) {
     let card_e = trig.target();
-    let (initial_t, is_selected) = or_return_quiet!(card_q.get(card_e));
+    let is_selected = or_return_quiet!(card_q.get(card_e));
     if is_selected {
         return;
     }
+    let i = card_index_from_slice(hand.entities(), trig.target());
+    let pos = hand_card_pos_with_offset(i, hand.len(), &mut thread_rng());
+
     or_return!(cmd.get_entity(card_e)).insert(Animator::new(Tracks::new([
-        tween::get_relative_translation_tween(
-            initial_t.translation.truncate(),
-            250,
-            Some(EaseFunction::BackOut),
-        ),
+        tween::get_relative_translation_tween(pos.truncate(), 250, Some(EaseFunction::BackOut)),
         // reset size in case other interactions overlap
         tween::get_relative_scale_tween(Vec2::splat(1.), 220, Some(EaseFunction::QuinticOut)),
     ])));
@@ -274,8 +336,8 @@ fn move_unfocused_card(
 #[cfg_attr(feature = "native_dev", hot)]
 fn move_selected_card(trig: Trigger<OnAdd, CardSelected>, mut cmd: Commands) {
     or_return!(cmd.get_entity(trig.target())).insert(Animator::new(Tracks::new([
-        Box::new(tween::get_relative_translation_tween(
-            Vec2::new(-400., 0.),
+        Box::new(tween::get_relative_translation_3d_tween(
+            Vec3::new(-470., 0., 5.),
             350,
             Some(EaseFunction::BackOut),
         )) as BoxedTweenable<_>,
@@ -293,17 +355,15 @@ fn move_selected_card(trig: Trigger<OnAdd, CardSelected>, mut cmd: Commands) {
 fn move_deselected_card(
     trig: Trigger<OnRemove, CardSelected>,
     mut cmd: Commands,
-    initial_trans_q: Query<&Initial<Transform>>,
+    hand: Single<&CardsInHand>,
 ) {
-    let initial_t = or_return!(initial_trans_q.get(trig.target()));
+    let i = card_index_from_slice(hand.entities(), trig.target());
+    let pos = hand_card_pos(i, hand.len());
+
     or_return!(cmd.get_entity(trig.target())).insert((
         Animator::new(Tracks::new([
-            tween::get_relative_translation_tween(
-                initial_t.translation.truncate(),
-                400,
-                Some(EaseFunction::BackOut),
-            )
-            .into(),
+            tween::get_relative_translation_tween(pos.truncate(), 400, Some(EaseFunction::BackOut))
+                .into(),
             Box::new(Sequence::new([tween::get_relative_scale_tween(
                 Vec2::splat(0.8),
                 80,
