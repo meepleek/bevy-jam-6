@@ -1,13 +1,15 @@
 use bevy::math::U16Vec2;
 use bevy::platform::collections::HashMap;
 use bevy::platform::collections::HashSet;
-use bevy::prelude::*;
 
 use super::Coords;
 use super::tile::Tile;
+use crate::game::card::Card;
+use crate::game::card::CardSelected;
 use crate::game::drag::SnapHover;
 use crate::game::drag::SnapTarget;
 use crate::game::drag::Snappables;
+use crate::prelude::*;
 
 pub const TILE_SIZE: u16 = 64;
 const DEFAULT_BOARD_SIZE: u16 = 6;
@@ -114,6 +116,14 @@ impl Grid {
 fn track_position(mut board_q: Query<(&mut Grid, &GlobalTransform), Changed<GlobalTransform>>) {
     for (mut board, t) in &mut board_q {
         board.center_global_position = t.translation().truncate();
+    }
+}
+
+fn highlight_tiles_on_card_selected(trig: Trigger<OnAdd, CardSelected>, card_q: Query<&Card>) {
+    let card = or_return!(card_q.get(trig.target()));
+    let interaction_palette = or_return_quiet!(card.action.grid_interaction_palette());
+    for tile in card.action.effect_tiles() {
+        // todo
     }
 }
 

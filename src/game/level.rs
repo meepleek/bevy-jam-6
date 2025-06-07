@@ -1,5 +1,5 @@
 use crate::game::card;
-use crate::game::card::CardEffect;
+use crate::game::card_effect::*;
 use crate::game::die;
 use crate::game::grid::Grid;
 use crate::prelude::*;
@@ -16,7 +16,11 @@ fn spawn_level(mut cmd: Commands, mut meshes: ResMut<Assets<Mesh>>) {
     let card_hover_mesh = meshes.add(Rectangle::new(190., 570.));
     for i in -2..=2 {
         cmd.spawn(card::card(
-            CardEffect::Move(1),
+            CardAction::Move {
+                reach: EffectReach::Exact(1),
+                direction: EffectDirection::Orthogonal,
+                pip_cost: 1,
+            },
             Vec3::new(
                 i as f32 * 150.,
                 -290. - (i as f32).abs() * 25.,

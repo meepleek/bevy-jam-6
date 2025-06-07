@@ -3,6 +3,7 @@ use bevy_tweening::BoxedTweenable;
 use bevy_tweening::Sequence;
 use bevy_tweening::Tracks;
 
+use crate::game::card_effect::CardAction;
 use crate::prelude::tween::PriorityTween;
 use crate::prelude::tween::get_relative_scale_tween;
 use crate::prelude::tween::get_relative_translation_tween;
@@ -14,14 +15,10 @@ pub fn plugin(app: &mut App) {}
 const CARD_BORDER_COL: Srgba = GRAY_950;
 const CARD_BORDER_COL_FOCUS: Srgba = AMBER_400;
 
-pub enum CardEffect {
-    Move(u8),
-}
-
 #[derive(Component)]
 #[require(Transform)]
 pub struct Card {
-    effect: CardEffect,
+    pub action: CardAction,
 }
 
 #[derive(Event, Default)]
@@ -37,14 +34,14 @@ pub struct CardSelected;
 util::relationship::relationship_1_to_1!(CardContent, CardContentRoot);
 
 pub fn card(
-    effect: CardEffect,
+    action: CardAction,
     position: Vec3,
     rotation: Rot2,
     hover_mesh: Handle<Mesh>,
 ) -> impl Bundle {
     (
         Name::new("card"),
-        Card { effect },
+        Card { action },
         Transform::from_translation(position),
         Visibility::default(),
         Patch(move |b| {
