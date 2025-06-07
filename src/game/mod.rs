@@ -19,7 +19,6 @@ pub fn plugin(app: &mut App) {
         tile::plugin,
         drag::plugin,
         grid::plugin,
-        card::plugin,
         die::plugin,
         player::plugin,
         level::plugin,
