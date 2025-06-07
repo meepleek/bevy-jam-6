@@ -18,8 +18,9 @@ relationship_1_to_n!(DiscardPileCard, DiscardPile);
 pub const START_HAND_SIZE: u8 = 3;
 
 pub(super) fn plugin(app: &mut App) {
-    app.add_observer(card_added_to_discard)
+    app.add_observer(card_added_to_draw)
         .add_observer(card_added_to_hand)
+        .add_observer(card_added_to_discard)
         .add_observer(restore_empty_piles::<DrawPile>)
         .add_observer(restore_empty_piles::<CardsInHand>)
         .add_observer(restore_empty_piles::<DiscardPile>);
@@ -35,6 +36,59 @@ pub(super) fn plugin(app: &mut App) {
 #[derive(Component)]
 #[require(DrawPile, CardsInHand, DiscardPile)]
 pub struct Piles;
+
+fn pile_card_pos_rot(
+    rng: &mut ThreadRng,
+    y_sign: f32,
+    card_pile_order: i16,
+    translation_max_offset: f32,
+    rotation_max_degree: f32,
+) -> (Vec3, f32) {
+    let angle = -90. + rng.gen_range(-rotation_max_degree..rotation_max_degree);
+    let offset_range = -translation_max_offset..translation_max_offset;
+    (
+        Vec3::new(
+            -480. + rng.gen_range(offset_range.clone()),
+            -230. * y_sign + rng.gen_range(offset_range),
+            card_pile_order as f32 * 0.1,
+        ),
+        angle.to_radians(),
+    )
+}
+
+pub fn draw_pile_card_pos_rot(rng: &mut ThreadRng, card_pile_order: i16) -> (Vec3, f32) {
+    pile_card_pos_rot(rng, 1., card_pile_order, 10., 8.)
+}
+
+fn discard_pile_card_pos_rot(rng: &mut ThreadRng, card_pile_order: i16) -> (Vec3, f32) {
+    pile_card_pos_rot(rng, -1., card_pile_order, 20., 25.)
+}
+
+fn card_added_to_draw(
+    trig: Trigger<OnAdd, DrawPileCard>,
+    mut cmd: Commands,
+    trans_q: Query<&Transform>,
+    card_rot_q: Query<&RotationRoot>,
+    draw_pile: Single<&DrawPile>,
+) {
+    let card_t = or_return!(trans_q.get(trig.target()));
+    let mut rng = thread_rng();
+    let anim_dur_ms = 300;
+    let (new_pos, new_angle) = draw_pile_card_pos_rot(&mut rng, draw_pile.len() as i16);
+
+    or_return!(cmd.get_entity(trig.target())).insert(tween::get_absolute_translation_anim(
+        card_t.translation.with_z(new_pos.z),
+        new_pos.truncate(),
+        anim_dur_ms,
+        None,
+    ));
+    let rotation_e = or_return!(card_rot_q.get(trig.target())).entity();
+    or_return!(cmd.get_entity(rotation_e)).try_insert(tween::get_relative_z_rotation_anim(
+        new_angle,
+        anim_dur_ms,
+        None,
+    ));
+}
 
 fn card_added_to_hand(trig: Trigger<OnAdd, HandCard>, mut cmd: Commands) {
     debug!("card added to hand");
@@ -109,19 +163,17 @@ fn card_added_to_discard(
 ) {
     let anim_dur_ms = 300;
     let card_t = or_return!(trans_q.get(trig.target()));
+    let mut rng = thread_rng();
+    let (new_pos, new_rot) = discard_pile_card_pos_rot(&mut rng, discard.len() as i16);
     or_return!(cmd.get_entity(trig.target())).insert(tween::get_absolute_translation_anim(
-        card_t
-            .translation
-            .with_z(0.1 + discard.entities().len() as f32 / 1.),
-        Vec2::new(-480., 230.),
+        card_t.translation.with_z(new_pos.z),
+        new_pos.truncate(),
         anim_dur_ms,
         None,
     ));
     let rotation_e = or_return!(card_rot_q.get(trig.target())).entity();
-    let angle_max = 25f32;
-    let angle = -90. + rand::thread_rng().gen_range(-angle_max..angle_max);
     or_return!(cmd.get_entity(rotation_e)).try_insert(tween::get_relative_z_rotation_anim(
-        angle.to_radians(),
+        new_rot,
         anim_dur_ms,
         None,
     ));
