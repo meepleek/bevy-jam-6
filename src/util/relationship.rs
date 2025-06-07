@@ -10,7 +10,8 @@ pub trait RelationshipEntities {
 
 macro_rules! relationship_1_to_1 {
     ($source:ident, $target:ident) => {
-        #[derive(Component)]
+        #[derive(Component, Debug, Reflect)]
+        #[reflect(Component)]
         #[relationship(relationship_target = $target)]
         pub struct $source(pub Entity);
 
@@ -21,7 +22,8 @@ macro_rules! relationship_1_to_1 {
             }
         }
 
-        #[derive(Component)]
+        #[derive(Component, Debug, Reflect)]
+        #[reflect(Component)]
         #[relationship_target(relationship = $source, linked_spawn)]
         pub struct $target(Entity);
 
@@ -41,7 +43,8 @@ relationship_1_to_1!(ChildRotation, RotationRoot);
 
 macro_rules! relationship_1_to_n {
     ($source:ident, $target:ident) => {
-        #[derive(Component)]
+        #[derive(Component, Debug, Reflect)]
+        #[reflect(Component)]
         #[relationship(relationship_target = $target)]
         pub struct $source(pub Entity);
 
@@ -52,7 +55,8 @@ macro_rules! relationship_1_to_n {
             }
         }
 
-        #[derive(Component, Default)]
+        #[derive(Component, Default, Debug, Reflect)]
+        #[reflect(Component)]
         #[relationship_target(relationship = $source, linked_spawn)]
         pub struct $target(Vec<Entity>);
 

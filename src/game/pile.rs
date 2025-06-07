@@ -1,3 +1,4 @@
+use bevy::time::common_conditions::repeating_after_delay;
 use bevy_tweening::Animator;
 use bevy_tweening::BoxedTweenable;
 use bevy_tweening::Sequence;
@@ -11,13 +12,29 @@ use crate::prelude::*;
 
 relationship_1_to_n!(DrawPileCard, DrawPile);
 relationship_1_to_n!(HandCard, CardsInHand);
-relationship_1_to_n!(HandCardObserver, CardsInHandObservers);
-relationship_1_to_n!(DiscardCard, DiscardPile);
+// relationship_1_to_n!(HandCardObserver, CardsInHandObservers);
+relationship_1_to_n!(DiscardPileCard, DiscardPile);
+
+pub const START_HAND_SIZE: u8 = 3;
 
 pub(super) fn plugin(app: &mut App) {
     app.add_observer(card_added_to_discard)
-        .add_observer(card_added_to_hand);
+        .add_observer(card_added_to_hand)
+        .add_observer(restore_empty_piles::<DrawPile>)
+        .add_observer(restore_empty_piles::<CardsInHand>)
+        .add_observer(restore_empty_piles::<DiscardPile>);
+    app.add_systems(
+        Update,
+        check_hand_size.run_if(repeating_after_delay(Duration::from_millis(1500))),
+    );
+    app.register_type::<DrawPile>()
+        .register_type::<CardsInHand>()
+        .register_type::<DiscardPile>();
 }
+
+#[derive(Component)]
+#[require(DrawPile, CardsInHand, DiscardPile)]
+pub struct Piles;
 
 fn card_added_to_hand(trig: Trigger<OnAdd, HandCard>, mut cmd: Commands) {
     debug!("card added to hand");
@@ -43,8 +60,47 @@ fn card_added_to_hand(trig: Trigger<OnAdd, HandCard>, mut cmd: Commands) {
         .observe(move_deselected_card);
 }
 
+fn restore_empty_piles<T: RelationshipTarget>(trig: Trigger<OnRemove, T>, mut cmd: Commands) {
+    // reinsert piles to retrigger adding missing empty piles
+    or_return!(cmd.get_entity(trig.target())).insert(Piles);
+}
+
+fn check_hand_size(
+    piles_q: Query<(Entity, &DrawPile, &CardsInHand, &DiscardPile), Changed<CardsInHand>>,
+    mut cmd: Commands,
+) {
+    let (piles_e, draw, hand, discard) = or_return_quiet!(piles_q.single());
+    if hand.is_empty() {
+        info!("draw new cards pls!");
+        let mut to_draw = Vec::new();
+        for e in draw.0.iter().rev().take(3) {
+            or_continue!(cmd.get_entity(*e)).try_remove::<DrawPileCard>();
+            to_draw.push(*e);
+        }
+        let hand_size = START_HAND_SIZE as usize;
+        if to_draw.len() < hand_size {
+            // not enough cards in the draw pile
+            // shuffle the discard, take the rest from there, then move to rest to the draw pile
+            let mut new_draw = discard.0.clone();
+            let mut rng = thread_rng();
+            new_draw.shuffle(&mut rng);
+            for e in new_draw {
+                or_continue!(cmd.get_entity(e)).try_remove::<DiscardPileCard>();
+                if to_draw.len() < hand_size {
+                    to_draw.push(e);
+                } else {
+                    or_continue!(cmd.get_entity(e)).try_insert(DrawPileCard(piles_e));
+                }
+            }
+        }
+        for e in to_draw {
+            or_continue!(cmd.get_entity(e)).try_insert(HandCard(piles_e));
+        }
+    }
+}
+
 fn card_added_to_discard(
-    trig: Trigger<OnAdd, DiscardCard>,
+    trig: Trigger<OnAdd, DiscardPileCard>,
     mut cmd: Commands,
     observer_q: Query<(Entity, &Observer)>,
     trans_q: Query<&Transform>,

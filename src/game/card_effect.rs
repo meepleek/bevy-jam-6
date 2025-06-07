@@ -1,9 +1,9 @@
 use std::ops::RangeInclusive;
 
 use crate::game::action::*;
-use crate::game::pile::CardsInHand;
-use crate::game::pile::DiscardCard;
 use crate::game::pile::DiscardPile;
+use crate::game::pile::DiscardPileCard;
+use crate::game::pile::HandCard;
 use crate::prelude::*;
 
 pub(super) fn plugin(app: &mut App) {
@@ -177,8 +177,8 @@ fn play_selected_tile_card(
 
     or_return!(cmd.get_entity(card_e))
         .try_remove::<CardSelected>()
-        .try_remove::<CardsInHand>()
-        .try_insert(DiscardCard(discard_pile.into_inner()));
+        .try_remove::<HandCard>()
+        .try_insert(DiscardPileCard(discard_pile.into_inner()));
     // todo: move card to discard
     // or just remove them in case the cards are also a timer?
 }
