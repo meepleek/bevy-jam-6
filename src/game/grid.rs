@@ -3,12 +3,10 @@ use bevy::platform::collections::HashMap;
 use bevy::platform::collections::HashSet;
 
 use super::Coords;
-use super::tile::Tile;
-use crate::game::card::Card;
-use crate::game::card::CardSelected;
 use crate::game::drag::SnapHover;
 use crate::game::drag::SnapTarget;
 use crate::game::drag::Snappables;
+use crate::game::tile::TileEntity;
 use crate::prelude::*;
 
 pub const TILE_SIZE: u16 = 64;
@@ -24,7 +22,7 @@ pub struct Grid {
     width: u16,
     heigth: u16,
     center_global_position: Vec2,
-    tiles: HashMap<Coords, Tile>,
+    tiles: HashMap<Coords, TileEntity>,
     explosion_grid: HashSet<Coords>,
 }
 impl SnapTarget for Grid {}
@@ -81,11 +79,11 @@ impl Grid {
             return None;
         }
 
-        Some(coords.as_u16vec2())
+        Some(coords)
     }
 
     pub fn tile_to_world(&self, tile: Coords) -> Option<Vec2> {
-        if tile.x >= self.width || tile.y >= self.heigth {
+        if tile.min_element() < 0 || tile.x >= self.width as i16 || tile.y >= self.heigth as i16 {
             return None;
         }
 
@@ -98,7 +96,10 @@ impl Grid {
     }
 
     pub fn can_place_at(&self, coords: Coords) -> Result<(), PlaceError> {
-        if coords.x >= self.width || coords.y >= self.heigth {
+        if coords.min_element() < 0
+            || coords.x >= self.width as i16
+            || coords.y >= self.heigth as i16
+        {
             return Err(PlaceError::OutOfBounds);
         } else if self.tiles.contains_key(&coords) {
             return Err(PlaceError::Taken);
@@ -106,7 +107,7 @@ impl Grid {
         Ok(())
     }
 
-    pub fn place_tile(&mut self, tile: Tile, coords: Coords) -> Result<(), PlaceError> {
+    pub fn place_tile(&mut self, tile: TileEntity, coords: Coords) -> Result<(), PlaceError> {
         self.can_place_at(coords)?;
         self.tiles.insert(coords, tile);
         Ok(())
@@ -116,14 +117,6 @@ impl Grid {
 fn track_position(mut board_q: Query<(&mut Grid, &GlobalTransform), Changed<GlobalTransform>>) {
     for (mut board, t) in &mut board_q {
         board.center_global_position = t.translation().truncate();
-    }
-}
-
-fn highlight_tiles_on_card_selected(trig: Trigger<OnAdd, CardSelected>, card_q: Query<&Card>) {
-    let card = or_return!(card_q.get(trig.target()));
-    let interaction_palette = or_return_quiet!(card.action.grid_interaction_palette());
-    for tile in card.action.effect_tiles() {
-        // todo
     }
 }
 
@@ -159,7 +152,7 @@ mod tests {
     #[test_case(0.,0., 3, 0 => None)]
     #[test_case(0.,0., 0, 3 => None)]
     #[traced_test]
-    fn tile_to_world(map_x: f32, map_y: f32, tile_x: u16, tile_y: u16) -> Option<Vec2> {
+    fn tile_to_world(map_x: f32, map_y: f32, tile_x: i16, tile_y: i16) -> Option<Vec2> {
         let mut board = Grid::new(3, 3);
         board.center_global_position = Vec2::new(map_x, map_y);
 
@@ -173,7 +166,7 @@ mod tests {
     #[test_case(0, 9 => matches Err(PlaceError::OutOfBounds))]
     #[test_case(50, 0 => matches Err(PlaceError::OutOfBounds))]
     #[test_case(0, 50 => matches Err(PlaceError::OutOfBounds))]
-    fn can_place_at_coords(x: u16, y: u16) -> Result<(), PlaceError> {
+    fn can_place_at_coords(x: i16, y: i16) -> Result<(), PlaceError> {
         let board = Grid::new(6, 9);
         board.can_place_at((x, y).into())
     }
@@ -183,7 +176,7 @@ mod tests {
         let coords: Coords = (3, 3).into();
         let mut board = Grid::new(6, 6);
         board
-            .place_tile(Tile::Player, coords)
+            .place_tile(TileEntity::Player, coords)
             .expect("Place first piece");
 
         assert_eq!(board.can_place_at(coords), Err(PlaceError::Taken));

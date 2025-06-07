@@ -1,4 +1,4 @@
-use bevy::math::U16Vec2;
+use bevy::math::I16Vec2;
 use bevy::prelude::*;
 
 pub mod card;
@@ -10,7 +10,7 @@ pub mod level;
 pub mod player;
 pub mod tile;
 
-pub type Coords = U16Vec2;
+pub type Coords = I16Vec2;
 
 pub fn plugin(app: &mut App) {
     app.add_plugins((

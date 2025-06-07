@@ -1,9 +1,5 @@
 use std::ops::RangeInclusive;
 
-use bevy::math::I16Vec2;
-
-use crate::game::card::Card;
-use crate::game::card::CardSelected;
 use crate::prelude::*;
 
 pub(super) fn plugin(app: &mut App) {}
@@ -38,7 +34,7 @@ pub enum CardAction {
     Junk,
 }
 impl CardAction {
-    pub fn effect_tiles(&self) -> Vec<I16Vec2> {
+    pub fn effect_tiles(&self) -> Vec<Coords> {
         match self {
             CardAction::Move {
                 reach, direction, ..
@@ -58,13 +54,13 @@ impl CardAction {
                     EffectDirection::Orthogonal => range
                         .flat_map(|i| {
                             [(0, -1), (0, 1), (-1, 0), (1, 0)]
-                                .map(|(sign_x, sign_y)| I16Vec2::new(sign_x, sign_y) * i)
+                                .map(|(sign_x, sign_y)| Coords::new(sign_x, sign_y) * i)
                         })
                         .collect(),
                     EffectDirection::Diagonal => range
                         .flat_map(|i| {
                             [(-1, -1), (-1, 1), (1, -1), (1, 1)]
-                                .map(|(sign_x, sign_y)| I16Vec2::new(sign_x, sign_y) * i)
+                                .map(|(sign_x, sign_y)| Coords::new(sign_x, sign_y) * i)
                         })
                         .collect(),
                 }
@@ -73,23 +69,24 @@ impl CardAction {
         }
     }
 
-    pub fn grid_interaction_palette(&self) -> Option<GridInteractionPalette> {
+    pub fn tile_interaction_palette(&self) -> Option<TileInteractionPalette> {
         match self {
-            CardAction::Move { .. } => Some(GridInteractionPalette::new(LIME_400, GREEN_800)),
+            CardAction::Move { .. } => Some(TileInteractionPalette::new(LIME_400, GREEN_800)),
             CardAction::Attack { poison: true, .. } => {
-                Some(GridInteractionPalette::new(PURPLE_500, PURPLE_900))
+                Some(TileInteractionPalette::new(PURPLE_500, PURPLE_900))
             },
-            CardAction::Attack { .. } => Some(GridInteractionPalette::new(ROSE_300, RED_400)),
+            CardAction::Attack { .. } => Some(TileInteractionPalette::new(ROSE_300, RED_400)),
             _ => None,
         }
     }
 }
 
-pub struct GridInteractionPalette {
-    highlight: Color,
-    hover: Color,
+#[derive(Debug, Clone)]
+pub struct TileInteractionPalette {
+    pub highlight: Color,
+    pub hover: Color,
 }
-impl GridInteractionPalette {
+impl TileInteractionPalette {
     pub fn new(highlight: impl Into<Color>, hover: impl Into<Color>) -> Self {
         Self {
             highlight: highlight.into(),
