@@ -7,6 +7,7 @@ pub mod extend;
 pub mod initial;
 pub mod late_commands;
 pub mod math;
+pub mod observer;
 pub mod patch;
 pub mod previous;
 pub mod relationship;
@@ -21,6 +22,7 @@ pub mod prelude {
     pub use super::extend::prelude::*;
     pub use super::initial::Initial;
     pub use super::late_commands::LateCommands;
+    pub use super::observer::*;
     pub use super::patch::Patch;
     pub use super::previous::Previous;
     pub use super::relationship::*;

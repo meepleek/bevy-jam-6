@@ -1,6 +1,4 @@
-use bevy::math::VectorSpace;
-
-use crate::game::card_effect::TileInteractionPalette;
+use crate::game::card_effect::PlaySelectedTileCard;
 use crate::prelude::tween::DespawnOnTweenCompleted;
 use crate::prelude::tween::get_absolute_scale_anim;
 use crate::prelude::tween::get_relative_scale_anim;
@@ -18,7 +16,7 @@ pub enum TileEntity {
 }
 
 #[derive(Component, Deref, DerefMut, Clone, Default)]
-pub struct TileCoords(Coords);
+pub struct TileCoords(pub Coords);
 
 #[derive(Component)]
 pub struct TileInteraction;
@@ -42,11 +40,11 @@ fn highlight_tiles_on_card_selected(
     card_q: Query<&Card>,
     mut cmd: Commands,
     grid: Single<&Grid>,
+    player_tile: Single<&TileCoords, With<Player>>,
 ) {
     let card = or_return!(card_q.get(trig.target()));
     let interaction_palette = or_return_quiet!(card.action.tile_interaction_palette());
-    // todo: get actual player coords from a Single query or similar
-    let player_tile = grid.world_to_tile(Vec2::ZERO).unwrap();
+    let player_tile = player_tile.0;
     for (tile, position) in card
         .action
         .effect_tiles()
@@ -54,7 +52,6 @@ fn highlight_tiles_on_card_selected(
         .map(|tile| player_tile + tile)
         .filter_map(|tile| grid.tile_to_world(tile).and_then(|pos| Some((tile, pos))))
     {
-        // todo: observe hover stuff
         cmd.spawn((
             Transform::from_translation(position.extend(0.)),
             Sprite::from_color(Color::NONE, Vec2::splat(60.)),
@@ -72,6 +69,9 @@ fn highlight_tiles_on_card_selected(
         ))
         .observe(tween::tween_sprite_color_on_trigger::<Pointer<Out>, ()>(
             interaction_palette.highlight,
-        ));
+        ))
+        .observe(move |_trig: Trigger<Pointer<Click>>, mut cmd: Commands| {
+            cmd.trigger(PlaySelectedTileCard(tile));
+        });
     }
 }

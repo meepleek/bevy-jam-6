@@ -2,6 +2,7 @@ use crate::game::card;
 use crate::game::card_effect::*;
 use crate::game::die;
 use crate::game::grid::Grid;
+use crate::game::tile::TileCoords;
 use crate::prelude::*;
 use crate::screen::Screen;
 
@@ -31,5 +32,5 @@ fn spawn_level(mut cmd: Commands, mut meshes: ResMut<Assets<Mesh>>) {
         ));
     }
 
-    cmd.spawn(die::die(ROSE_300, 5));
+    cmd.spawn((die::die(ROSE_300, 5), Player, TileCoords((4, 4).into())));
 }

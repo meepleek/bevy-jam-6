@@ -1,6 +1,7 @@
 use bevy::math::I16Vec2;
 use bevy::prelude::*;
 
+pub mod action;
 pub mod card;
 pub mod card_effect;
 pub mod die;
@@ -22,5 +23,6 @@ pub fn plugin(app: &mut App) {
         player::plugin,
         level::plugin,
         card_effect::plugin,
+        action::plugin,
     ));
 }

@@ -44,5 +44,6 @@ pub use crate::game::card::CardFocused;
 pub use crate::game::card::CardSelected;
 pub use crate::game::grid::Grid;
 pub use crate::game::grid::TILE_SIZE;
+pub use crate::game::player::Player;
 pub use crate::theme::prelude::*;
 pub use crate::util::prelude::*;
