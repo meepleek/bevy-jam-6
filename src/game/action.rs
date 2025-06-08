@@ -21,7 +21,7 @@ fn move_action(trig: Trigger<MoveAction>, mut cmd: Commands, grid: Single<&Grid>
         tween::get_relative_translation_anim(pos, 300, Some(EaseFunction::BackIn)),
         TileCoords(trig.target_tile),
     ));
-    cmd.trigger(PipChange {
+    cmd.trigger(PipChangeAction {
         agent_e: trig.agent_e,
         change: PipChangeKind::Offset(-(trig.pip_cost as i8)),
     });
@@ -34,12 +34,12 @@ pub enum PipChangeKind {
 }
 
 #[derive(Event, Debug)]
-pub struct PipChange {
+pub struct PipChangeAction {
     pub agent_e: Entity,
     pub change: PipChangeKind,
 }
 
-fn pip_change_action(trig: Trigger<PipChange>, mut die_q: Query<&mut Die>) {
+fn pip_change_action(trig: Trigger<PipChangeAction>, mut die_q: Query<&mut Die>) {
     let mut die = or_return_quiet!(die_q.get_mut(trig.agent_e));
     die.pip_count = match trig.change {
         PipChangeKind::Offset(offset) => die

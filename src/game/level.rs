@@ -49,10 +49,10 @@ fn spawn_level(mut cmd: Commands, mut meshes: ResMut<Assets<Mesh>>) {
             direction: EffectDirection::Orthogonal,
             pip_cost: 1,
         },
-        CardAction::Move {
+        CardAction::Heal {
             reach: EffectReach::Exact(3),
             direction: EffectDirection::Area,
-            pip_cost: 1,
+            heal: 1,
         },
         CardAction::HealSelf(2),
     ]

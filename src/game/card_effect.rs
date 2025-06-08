@@ -8,7 +8,8 @@ use crate::prelude::*;
 
 pub(super) fn plugin(app: &mut App) {
     app.add_observer(play_selected_tile_card)
-        .add_observer(play_card);
+        .add_observer(play_card)
+        .add_observer(play_selected_target_card);
 }
 
 // #[derive(Debug)]
@@ -46,6 +47,11 @@ pub enum CardAction {
         poison: bool,
     },
     HealSelf(u8),
+    Heal {
+        reach: EffectReach,
+        direction: EffectDirection,
+        heal: u8,
+    },
     Junk,
 }
 impl CardAction {
@@ -55,6 +61,9 @@ impl CardAction {
                 reach, direction, ..
             }
             | CardAction::Attack {
+                reach, direction, ..
+            }
+            | CardAction::Heal {
                 reach, direction, ..
             } => {
                 let range = match *reach {
@@ -109,6 +118,7 @@ impl CardAction {
             CardAction::Move { .. } => "Move",
             CardAction::Attack { poison: true, .. } => "Poison",
             CardAction::Attack { .. } => "Attack",
+            CardAction::Heal { .. } => "Heal",
             CardAction::HealSelf(_) => "Heal self",
             CardAction::Junk => "Junk",
         }
@@ -122,19 +132,20 @@ impl CardAction {
             CardAction::Move { pip_cost, .. } | CardAction::Attack { pip_cost, .. } => {
                 Some(-(*pip_cost as i8))
             },
-            CardAction::HealSelf(heal) => Some(*heal as i8),
+            CardAction::HealSelf(heal) | CardAction::Heal { heal, .. } => Some(*heal as i8),
             CardAction::Junk => None,
         }
     }
 
     pub fn tile_interaction_palette(&self) -> Option<TileInteractionPalette> {
         match self {
-            CardAction::Move { .. } => Some(TileInteractionPalette::new(LIME_400, GREEN_800)),
+            CardAction::Move { .. } => Some(TileInteractionPalette::new(INDIGO_400, INDIGO_800)),
             CardAction::Attack { poison: true, .. } => {
                 Some(TileInteractionPalette::new(PURPLE_500, PURPLE_900))
             },
+            CardAction::Heal { .. } => Some(TileInteractionPalette::new(LIME_400, GREEN_800)),
             CardAction::Attack { .. } => Some(TileInteractionPalette::new(ROSE_300, RED_400)),
-            _ => None,
+            CardAction::Junk | CardAction::HealSelf(_) => None,
         }
     }
 }
@@ -192,11 +203,14 @@ fn play_card(
 ) {
     let card = or_return!(card_q.get(trig.0));
     match &card.action {
-        CardAction::HealSelf(heal) => cmd.trigger(PipChange {
+        CardAction::HealSelf(heal) => cmd.trigger(PipChangeAction {
             agent_e: *player,
             change: PipChangeKind::Offset(*heal as i8),
         }),
-        _ => {
+        CardAction::Attack { .. }
+        | CardAction::Move { .. }
+        | CardAction::Heal { .. }
+        | CardAction::Junk => {
             error!(?card, "Card should not have been played on selection");
             unreachable!();
         },
@@ -227,19 +241,51 @@ fn play_selected_tile_card(
             target_tile: trig.0,
             pip_cost: *pip_cost,
         }),
-        CardAction::Attack {
-            reach,
-            direction,
-            attack,
-            pip_cost,
-            poison,
-        } => todo!(),
-        _ => {
-            error!(?card, "Card should not have been played on selection");
+        CardAction::Junk
+        | CardAction::HealSelf(_)
+        | CardAction::Heal { .. }
+        | CardAction::Attack { .. } => {
+            error!(?card, "Card should not have been played on tile selection");
             unreachable!();
         },
     }
+    or_return!(cmd.get_entity(card_e))
+        .try_remove::<SelectedTileTriggerCard>()
+        .try_remove::<HandCard>()
+        .try_insert(DiscardPileCard(discard_pile.into_inner()));
+}
 
+#[derive(Event)]
+pub struct PlaySelectedTargetCard(Entity);
+
+fn play_selected_target_card(
+    trig: Trigger<PlaySelectedTargetCard>,
+    selected_card: Single<(Entity, &Card), With<SelectedTileTriggerCard>>,
+    discard_pile: Single<Entity, With<DiscardPile>>,
+    mut cmd: Commands,
+) {
+    let (card_e, card) = selected_card.into_inner();
+    match &card.action {
+        CardAction::Attack {
+            attack,
+            pip_cost,
+            poison,
+            ..
+        } => todo!(),
+        CardAction::Heal { heal, .. } => {
+            cmd.trigger(PipChangeAction {
+                change: PipChangeKind::Offset(*heal as i8),
+                agent_e: trig.0,
+            });
+        },
+        CardAction::HealSelf(_) | CardAction::Move { .. } | CardAction::Junk => {
+            error!(
+                ?card,
+                "Card should not have been played on target selection"
+            );
+            unreachable!();
+        },
+    }
     or_return!(cmd.get_entity(card_e))
         .try_remove::<SelectedTileTriggerCard>()
         .try_remove::<HandCard>()
