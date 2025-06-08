@@ -77,7 +77,7 @@ fn despawn_after_tween(
                 DespawnOnTweenCompleted::Itself => ev.entity,
                 DespawnOnTweenCompleted::Entity(e) => *e,
             };
-            cmd.entity(e).despawn();
+            cmd.entity(e).try_despawn();
         }
     }
 }
@@ -92,7 +92,7 @@ fn process_priority_tween<T: Send + Sync + 'static>(
 ) {
     for ev in ev_r.read() {
         if despawn_q.contains(ev.entity) {
-            cmd.entity(ev.entity).remove::<PriorityTween<T>>();
+            cmd.entity(ev.entity).try_remove::<PriorityTween<T>>();
         }
     }
 }
