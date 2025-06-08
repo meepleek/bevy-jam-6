@@ -269,9 +269,18 @@ fn play_selected_tile_card(
         CardAction::Attack {
             attack,
             pip_cost,
-            poison,
+            // poison,
             ..
-        } => todo!(),
+        } => {
+            cmd.trigger(PipChangeAction {
+                change: PipChangeKind::Offset(-(*attack as i8)),
+                agent_e: or_return!(grid.coords_to_tile_entity(trig.0)).entity,
+            });
+            cmd.trigger(PipChangeAction {
+                change: PipChangeKind::Offset(-(*pip_cost as i8)),
+                agent_e: *player,
+            });
+        },
         CardAction::Heal { heal, .. } => {
             cmd.trigger(PipChangeAction {
                 change: PipChangeKind::Offset(*heal as i8),
