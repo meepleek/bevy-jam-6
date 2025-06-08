@@ -1,4 +1,3 @@
-use bevy::math::VectorSpace;
 use bevy::time::common_conditions::repeating_after_delay;
 use bevy_tweening::Animator;
 use bevy_tweening::BoxedTweenable;

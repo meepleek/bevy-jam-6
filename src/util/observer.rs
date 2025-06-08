@@ -11,11 +11,18 @@ pub fn insert_default_on_event<E: Event, B: Bundle, C: Component + Default>(
     trig: Trigger<E, B>,
     mut cmd: Commands,
 ) {
-    or_return_quiet!(cmd.get_entity(trig.target())).insert(C::default());
+    or_return_quiet!(cmd.get_entity(trig.target())).try_insert(C::default());
 }
 
 pub fn remove_on_event<E: Event, B: Bundle, C: Component>(trig: Trigger<E, B>, mut cmd: Commands) {
-    or_return_quiet!(cmd.get_entity(trig.target())).remove::<C>();
+    or_return_quiet!(cmd.get_entity(trig.target())).try_remove::<C>();
+}
+
+pub fn remove_on_add<TAddComponent: Component, TBundleToRemove: Bundle>(
+    trig: Trigger<OnAdd, TAddComponent>,
+    mut cmd: Commands,
+) {
+    or_return_quiet!(cmd.get_entity(trig.target())).try_remove::<TBundleToRemove>();
 }
 
 pub fn trigger_default_on_event<TSourceEv: Event, B: Bundle, TTargetEv: Event + Default>(
@@ -23,6 +30,17 @@ pub fn trigger_default_on_event<TSourceEv: Event, B: Bundle, TTargetEv: Event + 
     mut cmd: Commands,
 ) {
     or_return_quiet!(cmd.get_entity(trig.target())).trigger(TTargetEv::default());
+}
+
+pub fn ensure_single_on_add<C: Component>(
+    trig: Trigger<OnAdd, C>,
+    mut cmd: Commands,
+    query: Query<Entity, With<C>>,
+) {
+    let target_e = trig.target();
+    for e in query.iter().filter(|e| *e != target_e) {
+        or_continue!(cmd.get_entity(e)).try_remove::<C>();
+    }
 }
 
 pub fn remove_observers_for_watched_entity(
