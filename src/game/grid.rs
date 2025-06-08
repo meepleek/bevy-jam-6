@@ -1,42 +1,47 @@
 use bevy::math::U16Vec2;
 use bevy::platform::collections::HashMap;
-use bevy::platform::collections::HashSet;
 
 use super::Coords;
-use crate::game::drag::SnapHover;
-use crate::game::drag::SnapTarget;
-use crate::game::drag::Snappables;
 use crate::game::tile::TileEntity;
+use crate::game::tile::TileEntityKind;
 use crate::prelude::*;
 
 pub const TILE_SIZE: u16 = 64;
 const DEFAULT_BOARD_SIZE: u16 = 6;
 
 pub fn plugin(app: &mut App) {
-    app.add_systems(Update, track_position);
+    app.add_systems(Update, (track_position, track_tile_entities));
 }
 
-#[derive(Component, Debug, PartialEq)]
-#[require(Transform, Snappables<Grid>, Snappables<SnapHover>)]
+#[derive(Component)]
+#[require(Transform)]
 pub struct Grid {
     width: u16,
     heigth: u16,
     center_global_position: Vec2,
-    tiles: HashMap<Coords, TileEntity>,
-    explosion_grid: HashSet<Coords>,
-}
-impl SnapTarget for Grid {}
-
-impl Default for Grid {
-    fn default() -> Self {
-        Self::new(DEFAULT_BOARD_SIZE, DEFAULT_BOARD_SIZE)
-    }
+    occupied_tiles: HashMap<Coords, TileEntity>,
+    entities: HashMap<Entity, Coords>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum PlaceError {
     Taken,
     OutOfBounds,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum MoveError {
+    Taken,
+    OutOfBounds,
+    EntityLookupFailed,
+}
+impl From<PlaceError> for MoveError {
+    fn from(place_err: PlaceError) -> Self {
+        match place_err {
+            PlaceError::Taken => Self::Taken,
+            PlaceError::OutOfBounds => Self::OutOfBounds,
+        }
+    }
 }
 
 impl Grid {
@@ -47,8 +52,8 @@ impl Grid {
         Self {
             width,
             heigth,
-            tiles: HashMap::default(),
-            explosion_grid: HashSet::default(),
+            occupied_tiles: HashMap::default(),
+            entities: HashMap::default(),
             center_global_position: Vec2::ZERO,
         }
     }
@@ -63,6 +68,14 @@ impl Grid {
 
     pub fn size(&self) -> Vec2 {
         self.grid_size().as_vec2() * TILE_SIZE as f32
+    }
+
+    pub fn entity_at_coords(&self, coords: Coords) -> Option<TileEntity> {
+        self.occupied_tiles.get(&coords).cloned()
+    }
+
+    pub fn entity_to_coords(&self, entity: Entity) -> Option<Coords> {
+        self.entities.get(&entity).cloned()
     }
 
     pub fn world_to_tile(&self, pos: Vec2) -> Option<Coords> {
@@ -101,16 +114,38 @@ impl Grid {
             || coords.y >= self.heigth as i16
         {
             return Err(PlaceError::OutOfBounds);
-        } else if self.tiles.contains_key(&coords) {
+        } else if self.occupied_tiles.contains_key(&coords) {
             return Err(PlaceError::Taken);
         }
         Ok(())
     }
 
-    pub fn place_tile(&mut self, tile: TileEntity, coords: Coords) -> Result<(), PlaceError> {
+    pub fn place_entity(
+        &mut self,
+        tile_entity: TileEntity,
+        coords: Coords,
+    ) -> Result<(), PlaceError> {
         self.can_place_at(coords)?;
-        self.tiles.insert(coords, tile);
+        self.entities.insert(tile_entity.entity, coords);
+        self.occupied_tiles.insert(coords, tile_entity);
+
         Ok(())
+    }
+
+    pub fn move_entity(&mut self, entity: Entity, coords: Coords) -> Result<(), MoveError> {
+        self.can_place_at(coords)?;
+        match self.entities.get(&entity) {
+            Some(prev_tile) => match self.clear_tile(*prev_tile) {
+                Some(tile_entity) => self.place_entity(tile_entity, coords)?,
+                None => panic!("Reverse coords lookup failed"),
+            },
+            None => return Err(MoveError::EntityLookupFailed),
+        }
+        Ok(())
+    }
+
+    fn clear_tile(&mut self, coords: Coords) -> Option<TileEntity> {
+        self.occupied_tiles.remove(&coords)
     }
 }
 
@@ -120,12 +155,33 @@ fn track_position(mut board_q: Query<(&mut Grid, &GlobalTransform), Changed<Glob
     }
 }
 
+fn track_tile_entities(
+    entity_q: Query<(Entity, &TileEntityKind, &GlobalTransform), Changed<GlobalTransform>>,
+    mut grid: Single<&mut Grid>,
+) {
+    for (e, kind, t) in &entity_q {
+        let tile = or_continue!(grid.world_to_tile(t.translation().truncate()));
+        if grid.entities.contains_key(&e) {
+            grid.move_entity(e, tile);
+        } else {
+            grid.place_entity(
+                TileEntity {
+                    entity: e,
+                    kind: *kind,
+                },
+                tile,
+            );
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use test_case::test_case;
     use tracing_test::traced_test;
 
     use super::*;
+    use crate::game::tile::TileEntityKind;
 
     #[test_case(0., 0., 0., 0. => Some(Coords::ONE))]
     #[test_case(64.,-64., 0., 0. => Some(Coords::ZERO))]
@@ -176,7 +232,13 @@ mod tests {
         let coords: Coords = (3, 3).into();
         let mut board = Grid::new(6, 6);
         board
-            .place_tile(TileEntity::Player, coords)
+            .place_entity(
+                TileEntity {
+                    kind: TileEntityKind::Player,
+                    entity: Entity::PLACEHOLDER,
+                },
+                coords,
+            )
             .expect("Place first piece");
 
         assert_eq!(board.can_place_at(coords), Err(PlaceError::Taken));

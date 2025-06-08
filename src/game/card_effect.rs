@@ -8,8 +8,7 @@ use crate::prelude::*;
 
 pub(super) fn plugin(app: &mut App) {
     app.add_observer(play_selected_tile_card)
-        .add_observer(play_card)
-        .add_observer(play_selected_target_card);
+        .add_observer(play_card);
 }
 
 // #[derive(Debug)]
@@ -232,40 +231,16 @@ fn play_selected_tile_card(
     selected_card: Single<(Entity, &Card), With<SelectedTileTriggerCard>>,
     player: Single<Entity, With<Player>>,
     discard_pile: Single<Entity, With<DiscardPile>>,
+    grid: Single<&Grid>,
     mut cmd: Commands,
 ) {
     let (card_e, card) = selected_card.into_inner();
     match &card.action {
         CardAction::Move { pip_cost, .. } => cmd.trigger(MoveAction {
             agent_e: *player,
-            target_tile: trig.0,
+            to: trig.0,
             pip_cost: *pip_cost,
         }),
-        CardAction::Junk
-        | CardAction::HealSelf(_)
-        | CardAction::Heal { .. }
-        | CardAction::Attack { .. } => {
-            error!(?card, "Card should not have been played on tile selection");
-            unreachable!();
-        },
-    }
-    or_return!(cmd.get_entity(card_e))
-        .try_remove::<SelectedTileTriggerCard>()
-        .try_remove::<HandCard>()
-        .try_insert(DiscardPileCard(discard_pile.into_inner()));
-}
-
-#[derive(Event)]
-pub struct PlaySelectedTargetCard(Entity);
-
-fn play_selected_target_card(
-    trig: Trigger<PlaySelectedTargetCard>,
-    selected_card: Single<(Entity, &Card), With<SelectedTileTriggerCard>>,
-    discard_pile: Single<Entity, With<DiscardPile>>,
-    mut cmd: Commands,
-) {
-    let (card_e, card) = selected_card.into_inner();
-    match &card.action {
         CardAction::Attack {
             attack,
             pip_cost,
@@ -275,14 +250,11 @@ fn play_selected_target_card(
         CardAction::Heal { heal, .. } => {
             cmd.trigger(PipChangeAction {
                 change: PipChangeKind::Offset(*heal as i8),
-                agent_e: trig.0,
+                agent_e: or_return!(grid.entity_at_coords(trig.0)).entity,
             });
         },
-        CardAction::HealSelf(_) | CardAction::Move { .. } | CardAction::Junk => {
-            error!(
-                ?card,
-                "Card should not have been played on target selection"
-            );
+        CardAction::Junk | CardAction::HealSelf(_) => {
+            error!(?card, "Card should not have been played on tile selection");
             unreachable!();
         },
     }

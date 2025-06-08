@@ -1,5 +1,4 @@
 use crate::game::die::Die;
-use crate::game::tile::TileCoords;
 use crate::prelude::*;
 
 pub(super) fn plugin(app: &mut App) {
@@ -11,20 +10,24 @@ pub(super) fn plugin(app: &mut App) {
 #[derive(Event, Debug)]
 pub struct MoveAction {
     pub agent_e: Entity,
-    pub target_tile: Coords,
+    pub to: Coords,
     pub pip_cost: u8,
 }
 
-fn move_action(trig: Trigger<MoveAction>, mut cmd: Commands, grid: Single<&Grid>) {
-    let pos = or_return!(grid.tile_to_world(trig.target_tile));
-    or_return!(cmd.get_entity(trig.agent_e)).insert((
-        tween::get_relative_translation_anim(pos, 300, Some(EaseFunction::BackIn)),
-        TileCoords(trig.target_tile),
+fn move_action(trig: Trigger<MoveAction>, mut cmd: Commands, mut grid: Single<&mut Grid>) {
+    let pos = or_return!(grid.tile_to_world(trig.to));
+    or_return!(grid.move_entity(trig.agent_e, trig.to));
+    or_return!(cmd.get_entity(trig.agent_e)).insert(tween::get_relative_translation_anim(
+        pos,
+        300,
+        Some(EaseFunction::BackIn),
     ));
-    cmd.trigger(PipChangeAction {
-        agent_e: trig.agent_e,
-        change: PipChangeKind::Offset(-(trig.pip_cost as i8)),
-    });
+    if trig.pip_cost != 0 {
+        cmd.trigger(PipChangeAction {
+            agent_e: trig.agent_e,
+            change: PipChangeKind::Offset(-(trig.pip_cost as i8)),
+        });
+    }
 }
 
 #[derive(Debug, PartialEq)]

@@ -2,7 +2,6 @@ use bevy::color::palettes::css::BLACK;
 
 use crate::game::card_effect::CardAction;
 use crate::game::card_effect::PlaySelectedTileCard;
-use crate::game::tile::TileCoords;
 use crate::game::tile::TileInteraction;
 use crate::prelude::*;
 use crate::util;
@@ -155,10 +154,10 @@ fn process_selected_card(
     card_q: Query<&Card>,
     mut cmd: Commands,
     grid: Single<&Grid>,
-    player_tile: Single<&TileCoords, With<Player>>,
+    player: Single<Entity, With<Player>>,
 ) {
     let card = or_return!(card_q.get(trig.target()));
-    let player_tile = player_tile.0;
+    let player_tile = or_return!(grid.entity_to_coords(*player));
     let trigger = or_return_quiet!(card.action.trigger());
     match trigger {
         super::card_effect::ActionTrigger::CardSelection => {
@@ -177,7 +176,6 @@ fn process_selected_card(
                     tween::get_relative_sprite_color_anim(interaction_palette.highlight, 150, None),
                     tween::get_absolute_scale_anim(Vec3::splat(0.5), Vec2::ONE, 180, None),
                     TileInteraction,
-                    TileCoords(tile),
                     Pickable {
                         should_block_lower: false,
                         is_hoverable: true,

@@ -8,11 +8,19 @@ pub fn plugin(app: &mut App) {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum TileEntity {
-    Player,
+pub struct TileEntity {
+    pub entity: Entity,
+    pub kind: TileEntityKind,
 }
 
-#[derive(Component, Deref, DerefMut, Clone, Default)]
+#[derive(Component, Debug, Clone, Copy, PartialEq)]
+pub enum TileEntityKind {
+    Player,
+    Enemy,
+    Wall,
+}
+
+#[derive(Clone, Default)]
 pub struct TileCoords(pub Coords);
 
 #[derive(Component)]

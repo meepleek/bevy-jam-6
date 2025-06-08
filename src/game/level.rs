@@ -7,7 +7,7 @@ use crate::game::grid::Grid;
 use crate::game::pile::DrawPileCard;
 use crate::game::pile::Piles;
 use crate::game::pile::draw_pile_card_pos_rot;
-use crate::game::tile::TileCoords;
+use crate::game::tile::TileEntityKind;
 use crate::prelude::*;
 use crate::screen::Screen;
 
@@ -77,8 +77,8 @@ fn spawn_level(mut cmd: Commands, mut meshes: ResMut<Assets<Mesh>>) {
                 kind: DieKind::D6,
                 pip_count: 5,
             },
+            TileEntityKind::Player,
         ),
         Player,
-        TileCoords((4, 4).into()),
     ));
 }

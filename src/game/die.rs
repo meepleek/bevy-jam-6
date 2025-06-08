@@ -1,6 +1,6 @@
 use bevy::color::palettes::css::BLACK;
 
-use crate::game::tile::TileCoords;
+use crate::game::tile::TileEntityKind;
 use crate::prelude::*;
 
 pub(super) fn plugin(app: &mut App) {
@@ -37,7 +37,7 @@ impl DieKind {
 }
 
 #[derive(Component, Debug)]
-#[require(TileCoords, Transform, Visibility)]
+#[require(Transform, Visibility)]
 pub struct Die {
     pub pip_count: u8,
     pub kind: DieKind,
@@ -79,14 +79,11 @@ impl Die {
     }
 }
 
-pub fn die(color: impl Into<Color>, die: Die) -> impl Bundle {
+pub fn die(color: impl Into<Color>, die: Die, kind: TileEntityKind) -> impl Bundle {
     (
         die,
         Sprite::from_color(color.into(), Vec2::splat(50.)),
-        // children![(
-        //     Text2d::new(pip_count.to_string()),
-        //     TextColor(GRAY_950.into())
-        // )],
+        kind,
     )
 }
 
