@@ -6,6 +6,8 @@ use bevy_tweening::Tracks;
 
 use crate::game::card::CARD_BORDER_COL;
 use crate::game::card::CARD_BORDER_COL_FOCUS;
+use crate::game::card::CardFace;
+use crate::game::card::CardFaceRoot;
 use crate::game::card::CardPointerOut;
 use crate::game::card_effect::ActionTrigger;
 use crate::game::card_effect::PlayCard;
@@ -36,7 +38,9 @@ pub(super) fn plugin(app: &mut App) {
     );
     app.register_type::<DrawPile>()
         .register_type::<CardsInHand>()
-        .register_type::<DiscardPile>();
+        .register_type::<DiscardPile>()
+        .register_type::<CardFaceRoot>()
+        .register_type::<CardFace>();
 }
 
 // todo: consider rewriting this so that
@@ -80,7 +84,7 @@ fn discard_pile_card_pos_rot(rng: &mut ThreadRng, card_pile_order: i16) -> (Vec3
 fn card_added_to_draw(
     trig: Trigger<OnAdd, DrawPileCard>,
     mut cmd: Commands,
-    card_rot_q: Query<&RotationRoot>,
+    card_rot_q: Query<(&RotationRoot, &CardFaceRoot)>,
     draw_pile: Single<&DrawPile>,
 ) {
     let mut rng = thread_rng();
@@ -92,12 +96,11 @@ fn card_added_to_draw(
         anim_dur_ms,
         None,
     ));
-    let rotation_e = or_return!(card_rot_q.get(trig.target())).entity();
-    or_return!(cmd.get_entity(rotation_e)).try_insert(tween::get_relative_z_rotation_anim(
-        new_angle,
-        anim_dur_ms,
-        None,
-    ));
+    let (rotation_e, face_root) = or_return!(card_rot_q.get(trig.target()));
+    or_return!(cmd.get_entity(rotation_e.entity())).try_insert(
+        tween::get_relative_z_rotation_anim(new_angle, anim_dur_ms, None),
+    );
+    or_return!(cmd.get_entity(face_root.entity())).try_despawn();
 }
 
 fn card_index_mult(card_index: usize, pile_size: usize) -> f32 {

@@ -2,6 +2,8 @@ use bevy::color::palettes::css::BLACK;
 
 use crate::game::card_effect::CardAction;
 use crate::game::card_effect::PlaySelectedTileCard;
+use crate::game::pile::DrawPileCard;
+use crate::game::pile::HandCard;
 use crate::game::tile::TileInteraction;
 use crate::prelude::*;
 use crate::util;
@@ -10,7 +12,7 @@ pub const CARD_BORDER_COL: Srgba = GRAY_950;
 pub const CARD_BORDER_COL_FOCUS: Srgba = AMBER_400;
 
 pub(super) fn plugin(app: &mut App) {
-    app.add_systems(Update, draw_card_effects)
+    app.add_observer(draw_card_effects)
         .add_observer(process_selected_card);
 }
 
@@ -31,6 +33,7 @@ pub struct CardFocused;
 pub struct SelectedTileTriggerCard;
 
 util::relationship::relationship_1_to_1!(CardContent, CardContentRoot);
+util::relationship::relationship_1_to_1!(CardFace, CardFaceRoot);
 
 pub fn card(
     action: CardAction,
@@ -81,72 +84,68 @@ pub fn card(
 }
 
 fn draw_card_effects(
-    card_q: Query<(Entity, &Card, &RotationRoot), Added<Card>>,
+    trig: Trigger<OnAdd, HandCard>,
+    card_q: Query<(&Card, &RotationRoot), Without<CardFaceRoot>>,
     mut cmd: Commands,
 ) {
-    for (card_e, card, rotation_root) in &card_q {
-        or_continue!(cmd.get_entity(rotation_root.entity())).with_children(|b| {
+    let (card, rotation_root) = or_return!(card_q.get(trig.target()));
+    or_return!(cmd.get_entity(rotation_root.entity())).with_children(|b| {
+        b.spawn((
+            Name::new("card_content"),
+            Visibility::default(),
+            Transform::from_translation(Vec3::Z * 0.06),
+            CardFace(trig.target()),
+        ))
+        .with_children(|b| {
             b.spawn((
-                Name::new("card_content"),
-                Visibility::default(),
-                Transform::from_translation(Vec3::Z * 0.06),
-            ))
-            .with_children(|b| {
+                Name::new("card_title"),
+                Text2d::new(card.action.title()),
+                TextColor::from(BLACK),
+                Transform::from_translation(Vec3::Y * 90.),
+            ));
+
+            if let Some(pip_change) = card.action.pip_change() {
                 b.spawn((
-                    Name::new("card_title"),
-                    Text2d::new(card.action.title()),
-                    TextColor::from(BLACK),
-                    Transform::from_translation(Vec3::Y * 90.),
+                    Name::new("pip_cost"),
+                    Text2d::new(pip_change.to_string()),
+                    TextColor::from(if pip_change > 0 { GREEN_400 } else { RED_400 }),
+                    Transform::from_translation(Vec3::new(50., 90., 0.)),
                 ));
+            }
 
-                if let Some(pip_change) = card.action.pip_change() {
-                    b.spawn((
-                        Name::new("pip_cost"),
-                        Text2d::new(pip_change.to_string()),
-                        TextColor::from(if pip_change > 0 { GREEN_400 } else { RED_400 }),
-                        Transform::from_translation(Vec3::new(50., 90., 0.)),
-                    ));
-                }
-
-                if let Some(trigger) = card.action.trigger() {
-                    b.spawn((
-                        Name::new("effect_tiles"),
-                        Transform::from_translation(Vec3::Y * -15.),
-                        Visibility::default(),
-                    ))
-                    .with_children(|b| {
-                        match trigger {
-                            super::card_effect::ActionTrigger::CardSelection => {
-                                // todo: probably some icon to show that selecting the card will play it?
+            if let Some(trigger) = card.action.trigger() {
+                b.spawn((
+                    Name::new("effect_tiles"),
+                    Transform::from_translation(Vec3::Y * -15.),
+                    Visibility::default(),
+                ))
+                .with_children(|b| {
+                    match trigger {
+                        super::card_effect::ActionTrigger::CardSelection => {
+                            // todo: probably some icon to show that selecting the card will play it?
+                            b.spawn((
+                                Name::new("immediate_action"),
+                                Text2d::new("Do the thing"),
+                                TextColor::from(BLACK),
+                            ));
+                        },
+                        super::card_effect::ActionTrigger::TileSelection { tiles, .. } => {
+                            let palette = or_return!(card.action.tile_interaction_palette());
+                            let size = 20f32;
+                            // center tile
+                            b.spawn((Sprite::from_color(ROSE_300, Vec2::splat(size - 3.)),));
+                            for tile in tiles {
                                 b.spawn((
-                                    Name::new("immediate_action"),
-                                    Text2d::new("Do the thing"),
-                                    TextColor::from(BLACK),
+                                    Sprite::from_color(palette.highlight, Vec2::splat(size - 3.)),
+                                    Transform::from_translation(tile.as_vec2().extend(0.) * size),
                                 ));
-                            },
-                            super::card_effect::ActionTrigger::TileSelection { tiles, .. } => {
-                                let palette = or_return!(card.action.tile_interaction_palette());
-                                let size = 20f32;
-                                // center tile
-                                b.spawn((Sprite::from_color(ROSE_300, Vec2::splat(size - 3.)),));
-                                for tile in tiles {
-                                    b.spawn((
-                                        Sprite::from_color(
-                                            palette.highlight,
-                                            Vec2::splat(size - 3.),
-                                        ),
-                                        Transform::from_translation(
-                                            tile.as_vec2().extend(0.) * size,
-                                        ),
-                                    ));
-                                }
-                            },
-                        }
-                    });
-                }
-            });
+                            }
+                        },
+                    }
+                });
+            }
         });
-    }
+    });
 }
 
 fn process_selected_card(
