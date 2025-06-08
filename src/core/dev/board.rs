@@ -6,7 +6,7 @@ use crate::prelude::*;
 
 pub(super) fn plugin(app: &mut App) {
     // todo: probly use states...
-    app.add_systems(Update, draw_board_grid);
+    // app.add_systems(Update, draw_board_grid);
 }
 
 #[cfg_attr(feature = "native_dev", hot)]

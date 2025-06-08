@@ -62,7 +62,7 @@ fn spawn_level(mut cmd: Commands, mut meshes: ResMut<Assets<Mesh>>) {
         .insert(DrawPileCard(piles_e));
     }
 
-    let grid = Grid::new(9, 9);
+    let grid = Grid::new(9, 7);
     cmd.spawn((
         die::die(
             BLUE_400,
@@ -88,6 +88,24 @@ fn spawn_level(mut cmd: Commands, mut meshes: ResMut<Assets<Mesh>>) {
             Transform::from_translation(grid.tile_to_world(Coords::new(x, y)).unwrap().extend(0.)),
         ));
     }
+
+    cmd.spawn((
+        Name::new("grid"),
+        Transform::from_translation(Vec3::NEG_Z),
+        Visibility::default(),
+    ))
+    .with_children(|b| {
+        let size = grid.grid_size();
+        for tile in
+            (0..size.y).flat_map(|y| (0..size.x).map(move |x| Coords::new(x as i16, y as i16)))
+        {
+            b.spawn((
+                Name::new("grid_tile"),
+                Transform::from_translation(grid.tile_to_world(tile).unwrap().extend(0.)),
+                Sprite::from_color(GRAY_300, Vec2::splat(TILE_SIZE as f32 - 6.)),
+            ));
+        }
+    });
 
     cmd.spawn(grid);
 }
