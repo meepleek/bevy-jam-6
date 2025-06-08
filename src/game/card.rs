@@ -1,6 +1,10 @@
 use bevy::color::palettes::css::BLACK;
 
 use crate::game::card_effect::CardAction;
+use crate::game::card_effect::PlayCard;
+use crate::game::card_effect::PlaySelectedTileCard;
+use crate::game::tile::TileCoords;
+use crate::game::tile::TileInteraction;
 use crate::prelude::*;
 use crate::util;
 
@@ -8,7 +12,8 @@ pub const CARD_BORDER_COL: Srgba = GRAY_950;
 pub const CARD_BORDER_COL_FOCUS: Srgba = AMBER_400;
 
 pub(super) fn plugin(app: &mut App) {
-    app.add_systems(Update, draw_card_action);
+    app.add_systems(Update, draw_card_effects)
+        .add_observer(process_selected_card);
 }
 
 #[derive(Component, Debug)]
@@ -25,7 +30,7 @@ pub struct CardPointerOut;
 pub struct CardFocused;
 
 #[derive(Component, Clone, Copy, PartialEq, Default)]
-pub struct CardSelected;
+pub struct SelectedTileTriggerCard;
 
 util::relationship::relationship_1_to_1!(CardContent, CardContentRoot);
 
@@ -77,7 +82,10 @@ pub fn card(
     )
 }
 
-fn draw_card_action(card_q: Query<(Entity, &Card, &RotationRoot), Added<Card>>, mut cmd: Commands) {
+fn draw_card_effects(
+    card_q: Query<(Entity, &Card, &RotationRoot), Added<Card>>,
+    mut cmd: Commands,
+) {
     for (card_e, card, rotation_root) in &card_q {
         or_continue!(cmd.get_entity(rotation_root.entity())).with_children(|b| {
             b.spawn((
@@ -102,28 +110,92 @@ fn draw_card_action(card_q: Query<(Entity, &Card, &RotationRoot), Added<Card>>, 
                     ));
                 }
 
-                if let (Some(palette), Some(effect_tiles)) = (
-                    card.action.tile_interaction_palette(),
-                    card.action.effect_tiles(),
-                ) {
+                if let Some(trigger) = card.action.trigger() {
                     b.spawn((
                         Name::new("effect_tiles"),
                         Transform::from_translation(Vec3::Y * -15.),
                         Visibility::default(),
                     ))
                     .with_children(|b| {
-                        let size = 20f32;
-                        // center tile
-                        b.spawn((Sprite::from_color(ROSE_300, Vec2::splat(size - 3.)),));
-                        for tile in effect_tiles {
-                            b.spawn((
-                                Sprite::from_color(palette.highlight, Vec2::splat(size - 3.)),
-                                Transform::from_translation(tile.as_vec2().extend(0.) * size),
-                            ));
+                        match trigger {
+                            super::card_effect::ActionTrigger::CardSelection => {
+                                // todo: probably some icon to show that selecting the card will play it?
+                                b.spawn((
+                                    Name::new("immediate_action"),
+                                    Text2d::new("Do the thing"),
+                                    TextColor::from(BLACK),
+                                ));
+                            },
+                            super::card_effect::ActionTrigger::TileSelection(tiles) => {
+                                let palette = or_return!(card.action.tile_interaction_palette());
+                                let size = 20f32;
+                                // center tile
+                                b.spawn((Sprite::from_color(ROSE_300, Vec2::splat(size - 3.)),));
+                                for tile in tiles {
+                                    b.spawn((
+                                        Sprite::from_color(
+                                            palette.highlight,
+                                            Vec2::splat(size - 3.),
+                                        ),
+                                        Transform::from_translation(
+                                            tile.as_vec2().extend(0.) * size,
+                                        ),
+                                    ));
+                                }
+                            },
                         }
                     });
                 }
             });
         });
+    }
+}
+
+fn process_selected_card(
+    trig: Trigger<OnAdd, SelectedTileTriggerCard>,
+    card_q: Query<&Card>,
+    mut cmd: Commands,
+    grid: Single<&Grid>,
+    player_tile: Single<&TileCoords, With<Player>>,
+) {
+    let card = or_return!(card_q.get(trig.target()));
+    let player_tile = player_tile.0;
+    let trigger = or_return_quiet!(card.action.trigger());
+    match trigger {
+        super::card_effect::ActionTrigger::CardSelection => {
+            unreachable!("Card should have been played directly");
+        },
+        super::card_effect::ActionTrigger::TileSelection(tiles) => {
+            let interaction_palette = or_return!(card.action.tile_interaction_palette());
+            for (tile, position) in tiles
+                .into_iter()
+                .map(|tile| player_tile + tile)
+                .filter_map(|tile| grid.tile_to_world(tile).and_then(|pos| Some((tile, pos))))
+            {
+                cmd.spawn((
+                    Transform::from_translation(position.extend(0.)),
+                    Sprite::from_color(Color::NONE, Vec2::splat(60.)),
+                    tween::get_relative_sprite_color_anim(interaction_palette.highlight, 150, None),
+                    tween::get_absolute_scale_anim(Vec3::splat(0.5), Vec2::ONE, 180, None),
+                    TileInteraction,
+                    TileCoords(tile),
+                    Pickable {
+                        should_block_lower: false,
+                        is_hoverable: true,
+                    },
+                ))
+                .observe(tween::tween_sprite_color_on_trigger::<Pointer<Over>, ()>(
+                    interaction_palette.hover,
+                ))
+                .observe(tween::tween_sprite_color_on_trigger::<Pointer<Out>, ()>(
+                    interaction_palette.highlight,
+                ))
+                .observe(
+                    move |_trig: Trigger<Pointer<Click>>, mut cmd: Commands| {
+                        cmd.trigger(PlaySelectedTileCard(tile));
+                    },
+                );
+            }
+        },
     }
 }

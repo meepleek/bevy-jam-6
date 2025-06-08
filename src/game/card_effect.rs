@@ -7,22 +7,28 @@ use crate::game::pile::HandCard;
 use crate::prelude::*;
 
 pub(super) fn plugin(app: &mut App) {
-    app.add_observer(play_selected_tile_card);
+    app.add_observer(play_selected_tile_card)
+        .add_observer(play_card);
 }
 
-#[derive(Debug)]
-pub struct CardEffect {
-    pub action: CardAction,
-    pub conditions: Vec<CardActionCondition>,
-    // todo: trash effect?
-}
-impl CardEffect {
-    pub fn new(action: CardAction) -> Self {
-        Self {
-            action,
-            conditions: Vec::default(),
-        }
-    }
+// #[derive(Debug)]
+// pub struct CardEffect {
+//     pub action: CardAction,
+//     pub conditions: Vec<CardActionCondition>,
+//     // todo: trash effect?
+// }
+// impl CardEffect {
+//     pub fn new(action: CardAction) -> Self {
+//         Self {
+//             action,
+//             conditions: Vec::default(),
+//         }
+//     }
+// }
+
+pub enum ActionTrigger {
+    CardSelection,
+    TileSelection(Vec<Coords>),
 }
 
 #[derive(Debug)]
@@ -39,10 +45,11 @@ pub enum CardAction {
         pip_cost: u8,
         poison: bool,
     },
+    HealSelf(u8),
     Junk,
 }
 impl CardAction {
-    pub fn effect_tiles(&self) -> Option<Vec<Coords>> {
+    pub fn trigger(&self) -> Option<ActionTrigger> {
         match self {
             CardAction::Move {
                 reach, direction, ..
@@ -54,7 +61,7 @@ impl CardAction {
                     EffectReach::Exact(val) => val as i16..=val as i16,
                     EffectReach::Range(max) => 1..=max as i16,
                 };
-                Some(match direction {
+                Some(ActionTrigger::TileSelection(match direction {
                     EffectDirection::Area => match *reach {
                         EffectReach::Exact(val) => {
                             let val = val as i16;
@@ -90,8 +97,9 @@ impl CardAction {
                                 .map(|(sign_x, sign_y)| Coords::new(sign_x, sign_y) * i)
                         })
                         .collect(),
-                })
+                }))
             },
+            CardAction::HealSelf(_) => Some(ActionTrigger::CardSelection),
             CardAction::Junk => None,
         }
     }
@@ -101,6 +109,7 @@ impl CardAction {
             CardAction::Move { .. } => "Move",
             CardAction::Attack { poison: true, .. } => "Poison",
             CardAction::Attack { .. } => "Attack",
+            CardAction::HealSelf(_) => "Heal self",
             CardAction::Junk => "Junk",
         }
     }
@@ -113,6 +122,7 @@ impl CardAction {
             CardAction::Move { pip_cost, .. } | CardAction::Attack { pip_cost, .. } => {
                 Some(-(*pip_cost as i8))
             },
+            CardAction::HealSelf(heal) => Some(*heal as i8),
             CardAction::Junk => None,
         }
     }
@@ -170,11 +180,42 @@ pub enum CardActionCondition {
 // }
 
 #[derive(Event)]
+pub struct PlayCard(pub Entity);
+
+fn play_card(
+    trig: Trigger<PlayCard>,
+    card_q: Query<&Card>,
+    selected_cards: Query<Entity, With<SelectedTileTriggerCard>>,
+    player: Single<Entity, With<Player>>,
+    discard_pile: Single<Entity, With<DiscardPile>>,
+    mut cmd: Commands,
+) {
+    let card = or_return!(card_q.get(trig.0));
+    match &card.action {
+        CardAction::HealSelf(heal) => cmd.trigger(PipChange {
+            agent_e: *player,
+            change: PipChangeKind::Offset(*heal as i8),
+        }),
+        _ => {
+            error!(?card, "Card should not have been played on selection");
+            unreachable!();
+        },
+    }
+    or_return!(cmd.get_entity(trig.0))
+        .try_remove::<HandCard>()
+        .try_insert(DiscardPileCard(discard_pile.into_inner()));
+    // deselect any (other) selected tile cards on play
+    for selected_card_e in &selected_cards {
+        or_return!(cmd.get_entity(selected_card_e)).try_remove::<SelectedTileTriggerCard>();
+    }
+}
+
+#[derive(Event)]
 pub struct PlaySelectedTileCard(pub Coords);
 
 fn play_selected_tile_card(
     trig: Trigger<PlaySelectedTileCard>,
-    selected_card: Single<(Entity, &Card), With<CardSelected>>,
+    selected_card: Single<(Entity, &Card), With<SelectedTileTriggerCard>>,
     player: Single<Entity, With<Player>>,
     discard_pile: Single<Entity, With<DiscardPile>>,
     mut cmd: Commands,
@@ -193,13 +234,14 @@ fn play_selected_tile_card(
             pip_cost,
             poison,
         } => todo!(),
-        _ => {},
+        _ => {
+            error!(?card, "Card should not have been played on selection");
+            unreachable!();
+        },
     }
 
     or_return!(cmd.get_entity(card_e))
-        .try_remove::<CardSelected>()
+        .try_remove::<SelectedTileTriggerCard>()
         .try_remove::<HandCard>()
         .try_insert(DiscardPileCard(discard_pile.into_inner()));
-    // todo: move card to discard
-    // or just remove them in case the cards are also a timer?
 }

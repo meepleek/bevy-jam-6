@@ -7,6 +7,8 @@ use bevy_tweening::Tracks;
 use crate::game::card::CARD_BORDER_COL;
 use crate::game::card::CARD_BORDER_COL_FOCUS;
 use crate::game::card::CardPointerOut;
+use crate::game::card_effect::ActionTrigger;
+use crate::game::card_effect::PlayCard;
 use crate::prelude::tween::PriorityTween;
 use crate::prelude::*;
 
@@ -26,11 +28,11 @@ pub(super) fn plugin(app: &mut App) {
         .add_observer(restore_empty_piles::<DrawPile>)
         .add_observer(restore_empty_piles::<CardsInHand>)
         .add_observer(restore_empty_piles::<DiscardPile>)
-        .add_observer(ensure_single_at_most::<CardSelected>)
+        .add_observer(ensure_single_at_most::<SelectedTileTriggerCard>)
         .add_observer(ensure_single_at_most::<CardFocused>);
     app.add_systems(
         Update,
-        check_hand_size.run_if(repeating_after_delay(Duration::from_millis(1500))),
+        check_hand_size.run_if(repeating_after_delay(Duration::from_millis(300))),
     );
     app.register_type::<DrawPile>()
         .register_type::<CardsInHand>()
@@ -194,7 +196,7 @@ fn restore_empty_piles<T: RelationshipTarget>(trig: Trigger<OnRemove, T>, mut cm
 fn check_hand_size(
     piles_q: Query<(Entity, &DrawPile, &CardsInHand, &DiscardPile), Changed<CardsInHand>>,
     mut cmd: Commands,
-    rotation_q: Query<&RotationRoot, Without<CardSelected>>,
+    rotation_q: Query<&RotationRoot, Without<SelectedTileTriggerCard>>,
 ) {
     let (piles_e, draw, hand, discard) = or_return_quiet!(piles_q.single());
     if hand.is_empty() {
@@ -268,23 +270,27 @@ fn card_added_to_discard(
 
 #[cfg_attr(feature = "native_dev", hot)]
 fn on_card_click(
-    t: Trigger<Pointer<Click>>,
+    trig: Trigger<Pointer<Click>>,
     mut cmd: Commands,
-    card_selected_q: Query<(Entity), With<CardSelected>>,
+    card_selected_q: Query<(&Card, Has<SelectedTileTriggerCard>)>,
 ) {
-    if card_selected_q.contains(t.target()) {
-        // deselect card
-        or_return!(cmd.get_entity(t.target()))
-            .try_remove::<CardSelected>()
-            .try_remove::<CardFocused>();
-    } else {
-        // deselect other cards
-        for e in &card_selected_q {
-            or_continue_quiet!(cmd.get_entity(e)).try_remove::<CardSelected>();
-        }
-
-        // select card
-        or_return!(cmd.get_entity(t.target())).insert(CardSelected);
+    let (card, selected) = or_return!(card_selected_q.get(trig.target()));
+    match card.action.trigger() {
+        Some(ActionTrigger::TileSelection(_)) => {
+            if selected {
+                // deselect card
+                or_return!(cmd.get_entity(trig.target()))
+                    .try_remove::<SelectedTileTriggerCard>()
+                    .try_remove::<CardFocused>();
+            } else {
+                // select card
+                or_return!(cmd.get_entity(trig.target())).insert(SelectedTileTriggerCard);
+            }
+        },
+        Some(ActionTrigger::CardSelection) => {
+            cmd.trigger(PlayCard(trig.target()));
+        },
+        None => {},
     }
 }
 
@@ -292,7 +298,7 @@ fn on_card_click(
 fn move_focused_card(
     trig: Trigger<OnAdd, CardFocused>,
     mut cmd: Commands,
-    card_q: Query<Has<CardSelected>, Without<PriorityTween<Transform>>>,
+    card_q: Query<Has<SelectedTileTriggerCard>, Without<PriorityTween<Transform>>>,
     hand: Single<&CardsInHand>,
 ) {
     let card_e = trig.target();
@@ -314,7 +320,7 @@ fn move_focused_card(
 fn rotate_focused_card(
     trig: Trigger<OnAdd, CardFocused>,
     mut cmd: Commands,
-    card_q: Query<&RotationRoot, Without<CardSelected>>,
+    card_q: Query<&RotationRoot, Without<SelectedTileTriggerCard>>,
 ) {
     let rotation_root = or_return_quiet!(card_q.get(trig.target()));
     or_return_quiet!(cmd.get_entity(rotation_root.entity()))
@@ -325,7 +331,7 @@ fn rotate_focused_card(
 fn rotate_unfocused_card(
     trig: Trigger<OnRemove, CardFocused>,
     mut cmd: Commands,
-    card_q: Query<&RotationRoot, Without<CardSelected>>,
+    card_q: Query<&RotationRoot, Without<SelectedTileTriggerCard>>,
     hand: Single<&CardsInHand>,
 ) {
     let rotation_root = or_return_quiet!(card_q.get(trig.target()));
@@ -340,7 +346,7 @@ fn rotate_unfocused_card(
 fn move_unfocused_card(
     trig: Trigger<OnRemove, CardFocused>,
     mut cmd: Commands,
-    card_q: Query<Has<CardSelected>, Without<PriorityTween<Transform>>>,
+    card_q: Query<Has<SelectedTileTriggerCard>, Without<PriorityTween<Transform>>>,
     hand: Single<&CardsInHand>,
 ) {
     let card_e = trig.target();
@@ -359,7 +365,7 @@ fn move_unfocused_card(
 }
 
 #[cfg_attr(feature = "native_dev", hot)]
-fn move_selected_card(trig: Trigger<OnAdd, CardSelected>, mut cmd: Commands) {
+fn move_selected_card(trig: Trigger<OnAdd, SelectedTileTriggerCard>, mut cmd: Commands) {
     or_return!(cmd.get_entity(trig.target())).insert(Animator::new(Tracks::new([
         Box::new(tween::get_relative_translation_3d_tween(
             Vec3::new(-470., 0., 5.),
@@ -378,7 +384,7 @@ fn move_selected_card(trig: Trigger<OnAdd, CardSelected>, mut cmd: Commands) {
 
 #[cfg_attr(feature = "native_dev", hot)]
 fn move_deselected_card(
-    trig: Trigger<OnRemove, CardSelected>,
+    trig: Trigger<OnRemove, SelectedTileTriggerCard>,
     mut cmd: Commands,
     hand: Single<&CardsInHand>,
 ) {

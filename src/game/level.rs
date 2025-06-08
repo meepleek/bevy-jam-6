@@ -54,11 +54,7 @@ fn spawn_level(mut cmd: Commands, mut meshes: ResMut<Assets<Mesh>>) {
             direction: EffectDirection::Area,
             pip_cost: 1,
         },
-        CardAction::Move {
-            reach: EffectReach::Range(3),
-            direction: EffectDirection::Area,
-            pip_cost: 1,
-        },
+        CardAction::HealSelf(2),
     ]
     .into_iter()
     .enumerate()
