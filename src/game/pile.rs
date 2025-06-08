@@ -26,8 +26,8 @@ pub(super) fn plugin(app: &mut App) {
         .add_observer(restore_empty_piles::<DrawPile>)
         .add_observer(restore_empty_piles::<CardsInHand>)
         .add_observer(restore_empty_piles::<DiscardPile>)
-        .add_observer(ensure_single_on_add::<CardSelected>)
-        .add_observer(ensure_single_on_add::<CardFocused>);
+        .add_observer(ensure_single_at_most::<CardSelected>)
+        .add_observer(ensure_single_at_most::<CardFocused>);
     app.add_systems(
         Update,
         check_hand_size.run_if(repeating_after_delay(Duration::from_millis(1500))),
@@ -37,6 +37,13 @@ pub(super) fn plugin(app: &mut App) {
         .register_type::<DiscardPile>();
 }
 
+// todo: consider rewriting this so that
+// piles is a singleton component (ensure_one) that tracks all thi piles lie draw, hand, discard using observers
+// then add an create animator fn to either CardState or the Piles component
+// that animates the position, rotation, scale (focus pop) & colors
+// and run it from a single system
+// consider making the card pile an enum component
+// and keeping CardSelected & CardHovered as singleton components
 #[derive(Component)]
 #[require(DrawPile, CardsInHand, DiscardPile)]
 pub struct Piles;

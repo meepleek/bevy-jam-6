@@ -32,7 +32,7 @@ pub fn trigger_default_on_event<TSourceEv: Event, B: Bundle, TTargetEv: Event + 
     or_return_quiet!(cmd.get_entity(trig.target())).trigger(TTargetEv::default());
 }
 
-pub fn ensure_single_on_add<C: Component>(
+pub fn ensure_single_at_most<C: Component>(
     trig: Trigger<OnAdd, C>,
     mut cmd: Commands,
     query: Query<Entity, With<C>>,
