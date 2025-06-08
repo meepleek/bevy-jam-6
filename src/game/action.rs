@@ -33,7 +33,7 @@ fn move_action(trig: Trigger<MoveAction>, mut cmd: Commands, mut grid: Single<&m
 #[derive(Debug, PartialEq)]
 pub enum PipChangeKind {
     Offset(i8),
-    Randomise,
+    Reroll,
 }
 
 #[derive(Event, Debug)]
@@ -50,7 +50,7 @@ fn pip_change_action(trig: Trigger<PipChangeAction>, mut die_q: Query<&mut Die>)
             .saturating_add_signed(offset)
             .min(die.kind.max_pips()),
         // todo: if it's a player shift the distribution slightly in their favour
-        PipChangeKind::Randomise => thread_rng().gen_range(1..=die.kind.max_pips()),
+        PipChangeKind::Reroll => thread_rng().gen_range(1..=die.kind.max_pips()),
     };
 }
 

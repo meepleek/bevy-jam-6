@@ -54,18 +54,26 @@ pub enum CardAction {
         direction: EffectDirection,
         heal: u8,
     },
+    RerollSelf,
+    // Reroll {
+    //     reach: EffectReach,
+    //     direction: EffectDirection,
+    //     pip_cost: u8,
+    // },
     Junk,
 }
 impl CardAction {
     pub fn trigger(&self) -> Option<ActionTrigger> {
+        use CardAction::*;
+
         match self {
-            CardAction::Move {
+            Move {
                 reach, direction, ..
             }
-            | CardAction::Attack {
+            | Attack {
                 reach, direction, ..
             }
-            | CardAction::Heal {
+            | Heal {
                 reach, direction, ..
             } => {
                 let range = match *reach {
@@ -73,9 +81,9 @@ impl CardAction {
                     EffectReach::Range(max) => 1..=max as i16,
                 };
                 let target_dice = match self {
-                    CardAction::Move { .. } => false,
-                    CardAction::Attack { .. } | CardAction::Heal { .. } => true,
-                    CardAction::HealSelf(_) | CardAction::Junk => unreachable!(),
+                    Move { .. } => false,
+                    Attack { .. } | Heal { .. } => true,
+                    HealSelf(_) | RerollSelf | Junk => unreachable!(),
                 };
                 let mut tiles: Vec<_> = match direction {
                     EffectDirection::Area => match *reach {
@@ -119,8 +127,8 @@ impl CardAction {
                 }
                 Some(ActionTrigger::TileSelection { tiles, target_dice })
             },
-            CardAction::HealSelf(_) => Some(ActionTrigger::CardSelection),
-            CardAction::Junk => None,
+            HealSelf(_) | RerollSelf => Some(ActionTrigger::CardSelection),
+            Junk => None,
         }
     }
 
@@ -131,6 +139,7 @@ impl CardAction {
             CardAction::Attack { .. } => "Attack",
             CardAction::Heal { .. } => "Heal",
             CardAction::HealSelf(_) => "Heal self",
+            CardAction::RerollSelf => "Reroll self",
             CardAction::Junk => "Junk",
         }
     }
@@ -144,7 +153,7 @@ impl CardAction {
                 Some(-(*pip_cost as i8))
             },
             CardAction::HealSelf(heal) | CardAction::Heal { heal, .. } => Some(*heal as i8),
-            CardAction::Junk => None,
+            CardAction::Junk | CardAction::RerollSelf => None,
         }
     }
 
@@ -156,7 +165,7 @@ impl CardAction {
             },
             CardAction::Heal { .. } => Some(TileInteractionPalette::new(LIME_400, GREEN_800)),
             CardAction::Attack { .. } => Some(TileInteractionPalette::new(ROSE_300, RED_400)),
-            CardAction::Junk | CardAction::HealSelf(_) => None,
+            CardAction::Junk | CardAction::HealSelf(_) | CardAction::RerollSelf => None,
         }
     }
 }
@@ -218,6 +227,10 @@ fn play_card(
             agent_e: *player,
             change: PipChangeKind::Offset(*heal as i8),
         }),
+        CardAction::RerollSelf => cmd.trigger(PipChangeAction {
+            agent_e: *player,
+            change: PipChangeKind::Reroll,
+        }),
         CardAction::Attack { .. }
         | CardAction::Move { .. }
         | CardAction::Heal { .. }
@@ -265,7 +278,7 @@ fn play_selected_tile_card(
                 agent_e: or_return!(grid.coords_to_tile_entity(trig.0)).entity,
             });
         },
-        CardAction::Junk | CardAction::HealSelf(_) => {
+        CardAction::Junk | CardAction::HealSelf(_) | CardAction::RerollSelf => {
             error!(?card, "Card should not have been played on tile selection");
             unreachable!();
         },

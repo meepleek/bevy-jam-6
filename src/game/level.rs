@@ -40,15 +40,11 @@ fn spawn_level(mut cmd: Commands, mut meshes: ResMut<Assets<Mesh>>) {
             pip_cost: 1,
         },
         CardAction::Move {
-            reach: EffectReach::Range(3),
-            direction: EffectDirection::Diagonal,
-            pip_cost: 1,
-        },
-        CardAction::Move {
             reach: EffectReach::Range(2),
             direction: EffectDirection::Orthogonal,
             pip_cost: 1,
         },
+        CardAction::RerollSelf,
         CardAction::Heal {
             reach: EffectReach::Exact(3),
             direction: EffectDirection::Area,
