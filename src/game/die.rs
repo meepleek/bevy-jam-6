@@ -1,3 +1,5 @@
+use bevy::color::palettes::css::BLACK;
+
 use crate::game::tile::TileCoords;
 use crate::prelude::*;
 
@@ -75,10 +77,6 @@ impl Die {
             None
         }
     }
-
-    pub fn max_pips(&self) -> u8 {
-        self.kind.max_pips()
-    }
 }
 
 pub fn die(color: impl Into<Color>, die: Die) -> impl Bundle {
@@ -102,10 +100,29 @@ fn update_die_face(
         }
         or_continue!(cmd.get_entity(e))
             .try_remove::<DieFaceRoot>()
-            .with_child((
-                Text2d::new(die.pip_count.to_string()),
-                TextColor(GRAY_950.into()),
-                DieFace(e),
-            ));
+            .with_children(|b| {
+                if die.kind.show_pips() {
+                    b.spawn((
+                        DieFace(b.target_entity()),
+                        Visibility::default(),
+                        Transform::default(),
+                    ))
+                    .with_children(|b| {
+                        for pos in die.pip_positions().expect("Die with pips") {
+                            info!(?pos);
+                            b.spawn((
+                                Sprite::from_color(BLACK, Vec2::splat(10.)),
+                                Transform::from_translation((pos * 16.).extend(1.)),
+                            ));
+                        }
+                    });
+                } else {
+                    b.spawn((
+                        Text2d::new(die.pip_count.to_string()),
+                        TextColor(GRAY_950.into()),
+                        DieFace(b.target_entity()),
+                    ));
+                }
+            });
     }
 }
