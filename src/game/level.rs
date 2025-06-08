@@ -20,7 +20,7 @@ fn spawn_level(mut cmd: Commands, mut meshes: ResMut<Assets<Mesh>>) {
     cmd.spawn((Grid::new(9, 9), Transform::from_xyz(0., 0., 0.)));
     let piles_e = cmd.spawn((Name::new("Piles"), Piles)).id();
 
-    let card_hover_mesh = meshes.add(Rectangle::new(190., 570.));
+    let card_hover_mesh = meshes.add(Rectangle::new(230., 570.));
     for (i, action) in [
         CardAction::Move {
             reach: EffectReach::Exact(1),

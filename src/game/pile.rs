@@ -25,7 +25,9 @@ pub(super) fn plugin(app: &mut App) {
         .add_observer(card_added_to_discard)
         .add_observer(restore_empty_piles::<DrawPile>)
         .add_observer(restore_empty_piles::<CardsInHand>)
-        .add_observer(restore_empty_piles::<DiscardPile>);
+        .add_observer(restore_empty_piles::<DiscardPile>)
+        .add_observer(ensure_single_on_add::<CardSelected>)
+        .add_observer(ensure_single_on_add::<CardFocused>);
     app.add_systems(
         Update,
         check_hand_size.run_if(repeating_after_delay(Duration::from_millis(1500))),
