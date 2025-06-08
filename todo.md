@@ -1,8 +1,7 @@
 ## MVP
 
--   discard pile
--   draw pile
 -   lower pips on actions
+-   draw card visuals
 -   add enemies
 -   attack action
 -   attack chaining
