@@ -1,3 +1,5 @@
+use bevy::color::palettes::css::CRIMSON;
+
 use crate::game::card;
 use crate::game::card_effect::*;
 use crate::game::die;
@@ -18,10 +20,7 @@ pub(super) fn plugin(app: &mut App) {
 #[cfg_attr(feature = "native_dev", hot(rerun_on_hot_patch))]
 fn spawn_level(mut cmd: Commands, mut meshes: ResMut<Assets<Mesh>>) {
     let mut rng = thread_rng();
-
-    cmd.spawn((Grid::new(9, 9), Transform::from_xyz(0., 0., 0.)));
     let piles_e = cmd.spawn((Name::new("Piles"), Piles)).id();
-
     let card_hover_mesh = meshes.add(Rectangle::new(230., 570.));
     for (i, action) in [
         CardAction::Move {
@@ -61,9 +60,10 @@ fn spawn_level(mut cmd: Commands, mut meshes: ResMut<Assets<Mesh>>) {
         .insert(DrawPileCard(piles_e));
     }
 
+    let grid = Grid::new(9, 9);
     cmd.spawn((
         die::die(
-            ROSE_300,
+            BLUE_400,
             Die {
                 kind: DieKind::D6,
                 pip_count: 5,
@@ -72,4 +72,20 @@ fn spawn_level(mut cmd: Commands, mut meshes: ResMut<Assets<Mesh>>) {
         ),
         Player,
     ));
+
+    for (x, y) in [(6, 1), (5, 3), (1, 1)] {
+        cmd.spawn((
+            die::die(
+                CRIMSON,
+                Die {
+                    kind: DieKind::D6,
+                    pip_count: rng.gen_range(1..=3),
+                },
+                TileEntityKind::Enemy,
+            ),
+            Transform::from_translation(grid.tile_to_world(Coords::new(x, y)).unwrap().extend(0.)),
+        ));
+    }
+
+    cmd.spawn(grid);
 }
