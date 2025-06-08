@@ -276,7 +276,7 @@ fn on_card_click(
 ) {
     let (card, selected) = or_return!(card_selected_q.get(trig.target()));
     match card.action.trigger() {
-        Some(ActionTrigger::TileSelection(_)) => {
+        Some(ActionTrigger::TileSelection { .. }) => {
             if selected {
                 // deselect card
                 or_return!(cmd.get_entity(trig.target()))

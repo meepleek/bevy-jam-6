@@ -28,7 +28,10 @@ pub(super) fn plugin(app: &mut App) {
 
 pub enum ActionTrigger {
     CardSelection,
-    TileSelection(Vec<Coords>),
+    TileSelection {
+        tiles: Vec<Coords>,
+        target_dice: bool,
+    },
 }
 
 #[derive(Debug)]
@@ -69,7 +72,12 @@ impl CardAction {
                     EffectReach::Exact(val) => val as i16..=val as i16,
                     EffectReach::Range(max) => 1..=max as i16,
                 };
-                Some(ActionTrigger::TileSelection(match direction {
+                let target_dice = match self {
+                    CardAction::Move { .. } => false,
+                    CardAction::Attack { .. } | CardAction::Heal { .. } => true,
+                    CardAction::HealSelf(_) | CardAction::Junk => unreachable!(),
+                };
+                let mut tiles: Vec<_> = match direction {
                     EffectDirection::Area => match *reach {
                         EffectReach::Exact(val) => {
                             let val = val as i16;
@@ -105,7 +113,11 @@ impl CardAction {
                                 .map(|(sign_x, sign_y)| Coords::new(sign_x, sign_y) * i)
                         })
                         .collect(),
-                }))
+                };
+                if target_dice {
+                    tiles.push(Coords::ZERO);
+                }
+                Some(ActionTrigger::TileSelection { tiles, target_dice })
             },
             CardAction::HealSelf(_) => Some(ActionTrigger::CardSelection),
             CardAction::Junk => None,
@@ -250,7 +262,7 @@ fn play_selected_tile_card(
         CardAction::Heal { heal, .. } => {
             cmd.trigger(PipChangeAction {
                 change: PipChangeKind::Offset(*heal as i8),
-                agent_e: or_return!(grid.entity_at_coords(trig.0)).entity,
+                agent_e: or_return!(grid.coords_to_tile_entity(trig.0)).entity,
             });
         },
         CardAction::Junk | CardAction::HealSelf(_) => {

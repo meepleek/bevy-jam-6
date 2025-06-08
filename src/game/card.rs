@@ -124,7 +124,7 @@ fn draw_card_effects(
                                     TextColor::from(BLACK),
                                 ));
                             },
-                            super::card_effect::ActionTrigger::TileSelection(tiles) => {
+                            super::card_effect::ActionTrigger::TileSelection { tiles, .. } => {
                                 let palette = or_return!(card.action.tile_interaction_palette());
                                 let size = 20f32;
                                 // center tile
@@ -163,12 +163,19 @@ fn process_selected_card(
         super::card_effect::ActionTrigger::CardSelection => {
             unreachable!("Card should have been played directly");
         },
-        super::card_effect::ActionTrigger::TileSelection(tiles) => {
+        super::card_effect::ActionTrigger::TileSelection { tiles, target_dice } => {
             let interaction_palette = or_return!(card.action.tile_interaction_palette());
-            for (tile, position) in tiles
-                .into_iter()
-                .map(|tile| player_tile + tile)
-                .filter_map(|tile| grid.tile_to_world(tile).and_then(|pos| Some((tile, pos))))
+            for (tile, position) in
+                tiles
+                    .into_iter()
+                    .map(|tile| player_tile + tile)
+                    .filter_map(|tile| {
+                        if !target_dice || grid.contains_die(tile) {
+                            grid.tile_to_world(tile).and_then(|pos| Some((tile, pos)))
+                        } else {
+                            None
+                        }
+                    })
             {
                 cmd.spawn((
                     Transform::from_translation(position.extend(0.)),

@@ -70,8 +70,18 @@ impl Grid {
         self.grid_size().as_vec2() * TILE_SIZE as f32
     }
 
-    pub fn entity_at_coords(&self, coords: Coords) -> Option<TileEntity> {
+    pub fn coords_to_tile_entity(&self, coords: Coords) -> Option<TileEntity> {
         self.occupied_tiles.get(&coords).cloned()
+    }
+
+    pub fn contains_die(&self, coords: Coords) -> bool {
+        self.coords_to_tile_entity(coords)
+            .map_or(false, |tile_entity| {
+                matches!(
+                    tile_entity.kind,
+                    TileEntityKind::Player | TileEntityKind::Enemy
+                )
+            })
     }
 
     pub fn entity_to_coords(&self, entity: Entity) -> Option<Coords> {
