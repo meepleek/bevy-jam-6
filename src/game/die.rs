@@ -9,6 +9,7 @@ pub(super) fn plugin(app: &mut App) {
 
 relationship_1_to_1!(DieFace, DieFaceRoot);
 
+#[allow(dead_code)]
 #[derive(Default, Debug)]
 pub enum DieKind {
     D2,

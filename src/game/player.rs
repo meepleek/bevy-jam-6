@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-pub(super) fn plugin(app: &mut App) {}
+pub(super) fn plugin(_app: &mut App) {}
 
 #[derive(Component)]
 pub struct Player;

@@ -2,7 +2,6 @@ use bevy::color::palettes::css::BLACK;
 
 use crate::game::card_effect::CardAction;
 use crate::game::card_effect::PlaySelectedTileCard;
-use crate::game::pile::DrawPileCard;
 use crate::game::pile::HandCard;
 use crate::game::tile::TileInteraction;
 use crate::prelude::*;
@@ -170,7 +169,7 @@ fn process_selected_card(
                     .map(|tile| player_tile + tile)
                     .filter_map(|tile| {
                         if !target_dice || grid.contains_die(tile) {
-                            grid.tile_to_world(tile).and_then(|pos| Some((tile, pos)))
+                            grid.tile_to_world(tile).map(|pos| (tile, pos))
                         } else {
                             None
                         }

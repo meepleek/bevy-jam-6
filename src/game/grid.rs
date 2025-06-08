@@ -7,7 +7,6 @@ use crate::game::tile::TileEntityKind;
 use crate::prelude::*;
 
 pub const TILE_SIZE: u16 = 64;
-const DEFAULT_BOARD_SIZE: u16 = 6;
 
 pub fn plugin(app: &mut App) {
     app.add_systems(Update, (track_position, track_tile_entities));
@@ -23,13 +22,13 @@ pub struct Grid {
     entities: HashMap<Entity, Coords>,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, derive_more::Error, derive_more::Display)]
 pub enum PlaceError {
     Taken,
     OutOfBounds,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, derive_more::Error, derive_more::Display)]
 pub enum MoveError {
     Taken,
     OutOfBounds,
@@ -58,6 +57,7 @@ impl Grid {
         }
     }
 
+    #[allow(dead_code)]
     pub fn world_center(&self) -> Vec2 {
         self.center_global_position
     }
@@ -76,7 +76,7 @@ impl Grid {
 
     pub fn contains_die(&self, coords: Coords) -> bool {
         self.coords_to_tile_entity(coords)
-            .map_or(false, |tile_entity| {
+            .is_some_and(|tile_entity| {
                 matches!(
                     tile_entity.kind,
                     TileEntityKind::Player | TileEntityKind::Enemy
@@ -168,11 +168,11 @@ fn track_position(mut board_q: Query<(&mut Grid, &GlobalTransform), Changed<Glob
 fn track_tile_entities(
     entity_q: Query<(Entity, &TileEntityKind, &GlobalTransform), Changed<GlobalTransform>>,
     mut grid: Single<&mut Grid>,
-) {
+) -> Result {
     for (e, kind, t) in &entity_q {
         let tile = or_continue!(grid.world_to_tile(t.translation().truncate()));
         if grid.entities.contains_key(&e) {
-            grid.move_entity(e, tile);
+            grid.move_entity(e, tile)?;
         } else {
             grid.place_entity(
                 TileEntity {
@@ -180,9 +180,11 @@ fn track_tile_entities(
                     kind: *kind,
                 },
                 tile,
-            );
+            )?;
         }
     }
+
+    Ok(())
 }
 
 #[cfg(test)]

@@ -5,7 +5,6 @@ pub mod action;
 pub mod card;
 pub mod card_effect;
 pub mod die;
-pub mod drag;
 pub mod grid;
 pub mod level;
 pub mod pile;
@@ -17,7 +16,6 @@ pub type Coords = I16Vec2;
 pub fn plugin(app: &mut App) {
     app.add_plugins((
         tile::plugin,
-        drag::plugin,
         grid::plugin,
         die::plugin,
         player::plugin,

@@ -17,11 +17,9 @@ pub struct TileEntity {
 pub enum TileEntityKind {
     Player,
     Enemy,
+    #[allow(dead_code)]
     Wall,
 }
-
-#[derive(Clone, Default)]
-pub struct TileCoords(pub Coords);
 
 #[derive(Component)]
 pub struct TileInteraction;

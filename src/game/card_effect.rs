@@ -60,6 +60,7 @@ pub enum CardAction {
     //     direction: EffectDirection,
     //     pip_cost: u8,
     // },
+    #[allow(dead_code)]
     Junk,
 }
 impl CardAction {
@@ -188,6 +189,7 @@ impl TileInteractionPalette {
 pub enum EffectDirection {
     Area,
     Orthogonal,
+    #[allow(dead_code)]
     Diagonal,
 }
 
@@ -197,6 +199,7 @@ pub enum EffectReach {
     Range(u8),
 }
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub enum CardActionCondition {
     PipCount(RangeInclusive<u8>),

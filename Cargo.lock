@@ -1012,6 +1012,7 @@ dependencies = [
  "bevy_simple_subsecond_system",
  "bevy_state",
  "bevy_tweening",
+ "derive_more 2.0.1",
  "dirs",
  "getrandom 0.3.3",
  "iyes_progress",

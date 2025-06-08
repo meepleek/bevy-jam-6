@@ -44,6 +44,7 @@ bevy_simple_prefs = "0.6"
 bevy_simple_subsecond_system = { version = "0.2.0", optional = true, git = "https://github.com/TheBevyFlock/bevy_simple_subsecond_system" }
 bevy_state = { version = "0.16", default-features = false }
 bevy_tweening = { git = "https://github.com/meepleek/bevy_tweening.git", rev = "2e0742b11311feecc6eff3e583c54e738b2e67f7" }
+derive_more = { version = "2.0.1", features = ["error", "display"] }
 dirs = { version = "6", optional = true }
 iyes_progress = "0.14"
 lazy-regex = { version = "3", default-features = false, features = ["lite"] }
