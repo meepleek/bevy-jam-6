@@ -1,10 +1,14 @@
 use crate::game::tile::TileCoords;
 use crate::prelude::*;
 
-pub(super) fn plugin(app: &mut App) {}
+pub(super) fn plugin(app: &mut App) {
+    app.add_systems(Update, update_die_face);
+}
 
-#[derive(Component, Default)]
-pub enum Die {
+relationship_1_to_1!(DieFace, DieFaceRoot);
+
+#[derive(Default, Debug)]
+pub enum DieKind {
     D2,
     D4,
     #[default]
@@ -13,18 +17,95 @@ pub enum Die {
     D12,
     D20,
 }
+impl DieKind {
+    pub fn max_pips(&self) -> u8 {
+        match self {
+            DieKind::D2 => 2,
+            DieKind::D4 => 4,
+            DieKind::D6 => 6,
+            DieKind::D8 => 8,
+            DieKind::D12 => 12,
+            DieKind::D20 => 20,
+        }
+    }
 
-#[derive(Component, Deref, DerefMut)]
-#[require(TileCoords, Die, Transform, Visibility)]
-pub struct Pips(pub u8);
+    pub fn show_pips(&self) -> bool {
+        matches!(self, DieKind::D2 | DieKind::D4 | DieKind::D6)
+    }
+}
 
-pub fn die(color: impl Into<Color>, pip_count: u8) -> impl Bundle {
+#[derive(Component, Debug)]
+#[require(TileCoords, Transform, Visibility)]
+pub struct Die {
+    pub pip_count: u8,
+    pub kind: DieKind,
+}
+impl Die {
+    pub fn pip_positions(&self) -> Option<Vec<Vec2>> {
+        if self.kind.show_pips() {
+            Some(match self.pip_count {
+                0 => Vec::default(),
+                1 => vec![Vec2::ZERO],
+                2 => vec![Vec2::ONE, Vec2::NEG_ONE],
+                3 => vec![Vec2::ONE, Vec2::ZERO, Vec2::NEG_ONE],
+                4 => vec![
+                    Vec2::ONE,
+                    Vec2::NEG_ONE,
+                    Vec2::new(1., -1.),
+                    Vec2::new(-1., 1.),
+                ],
+                5 => vec![
+                    Vec2::ONE,
+                    Vec2::NEG_ONE,
+                    Vec2::new(1., -1.),
+                    Vec2::new(-1., 1.),
+                    Vec2::ZERO,
+                ],
+                6 => vec![
+                    Vec2::ONE,
+                    Vec2::X,
+                    Vec2::new(1., -1.),
+                    Vec2::NEG_ONE,
+                    Vec2::NEG_X,
+                    Vec2::new(-1., 1.),
+                ],
+                _ => unimplemented!("One simply does not draw this many pips"),
+            })
+        } else {
+            None
+        }
+    }
+
+    pub fn max_pips(&self) -> u8 {
+        self.kind.max_pips()
+    }
+}
+
+pub fn die(color: impl Into<Color>, die: Die) -> impl Bundle {
     (
-        Pips(5),
+        die,
         Sprite::from_color(color.into(), Vec2::splat(50.)),
-        children![(
-            Text2d::new(pip_count.to_string()),
-            TextColor(GRAY_950.into())
-        )],
+        // children![(
+        //     Text2d::new(pip_count.to_string()),
+        //     TextColor(GRAY_950.into())
+        // )],
     )
+}
+
+fn update_die_face(
+    die_q: Query<(Entity, &Die, Option<&DieFaceRoot>), Changed<Die>>,
+    mut cmd: Commands,
+) {
+    for (e, die, face_root) in &die_q {
+        if let Some(face_root) = face_root {
+            or_continue!(cmd.get_entity(face_root.entity())).try_despawn();
+        }
+        or_continue!(cmd.get_entity(e))
+            .try_remove::<DieFaceRoot>()
+            .with_child((
+                Text2d::new(die.pip_count.to_string()),
+                TextColor(GRAY_950.into()),
+                DieFace(e),
+            ));
+    }
 }

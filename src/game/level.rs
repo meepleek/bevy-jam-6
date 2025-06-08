@@ -1,6 +1,8 @@
 use crate::game::card;
 use crate::game::card_effect::*;
 use crate::game::die;
+use crate::game::die::Die;
+use crate::game::die::DieKind;
 use crate::game::grid::Grid;
 use crate::game::pile::DrawPileCard;
 use crate::game::pile::Piles;
@@ -72,5 +74,15 @@ fn spawn_level(mut cmd: Commands, mut meshes: ResMut<Assets<Mesh>>) {
         .insert(DrawPileCard(piles_e));
     }
 
-    cmd.spawn((die::die(ROSE_300, 5), Player, TileCoords((4, 4).into())));
+    cmd.spawn((
+        die::die(
+            ROSE_300,
+            Die {
+                kind: DieKind::D6,
+                pip_count: 5,
+            },
+        ),
+        Player,
+        TileCoords((4, 4).into()),
+    ));
 }
