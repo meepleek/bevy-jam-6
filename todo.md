@@ -1,6 +1,5 @@
 ## MVP
 
--   lower pips on actions
 -   draw card visuals
 -   add enemies
 -   attack action

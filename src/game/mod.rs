@@ -24,6 +24,7 @@ pub fn plugin(app: &mut App) {
         level::plugin,
         card_effect::plugin,
         pile::plugin,
+        card::plugin,
         action::plugin,
     ));
 }

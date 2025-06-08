@@ -42,7 +42,7 @@ pub enum CardAction {
     Junk,
 }
 impl CardAction {
-    pub fn effect_tiles(&self) -> Vec<Coords> {
+    pub fn effect_tiles(&self) -> Option<Vec<Coords>> {
         match self {
             CardAction::Move {
                 reach, direction, ..
@@ -54,7 +54,7 @@ impl CardAction {
                     EffectReach::Exact(val) => val as i16..=val as i16,
                     EffectReach::Range(max) => 1..=max as i16,
                 };
-                match direction {
+                Some(match direction {
                     EffectDirection::Area => match *reach {
                         EffectReach::Exact(val) => {
                             let val = val as i16;
@@ -90,9 +90,30 @@ impl CardAction {
                                 .map(|(sign_x, sign_y)| Coords::new(sign_x, sign_y) * i)
                         })
                         .collect(),
-                }
+                })
             },
-            _ => Vec::default(),
+            CardAction::Junk => None,
+        }
+    }
+
+    pub fn title(&self) -> &str {
+        match self {
+            CardAction::Move { .. } => "Move",
+            CardAction::Attack { poison: true, .. } => "Poison",
+            CardAction::Attack { .. } => "Attack",
+            CardAction::Junk => "Junk",
+        }
+    }
+
+    // todo: kind
+    // like action, passive, timed passive?
+
+    pub fn pip_change(&self) -> Option<i8> {
+        match self {
+            CardAction::Move { pip_cost, .. } | CardAction::Attack { pip_cost, .. } => {
+                Some(-(*pip_cost as i8))
+            },
+            CardAction::Junk => None,
         }
     }
 

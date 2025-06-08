@@ -109,7 +109,6 @@ fn update_die_face(
                     ))
                     .with_children(|b| {
                         for pos in die.pip_positions().expect("Die with pips") {
-                            info!(?pos);
                             b.spawn((
                                 Sprite::from_color(BLACK, Vec2::splat(10.)),
                                 Transform::from_translation((pos * 16.).extend(1.)),

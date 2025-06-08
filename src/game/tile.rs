@@ -45,9 +45,8 @@ fn highlight_tiles_on_card_selected(
     let card = or_return!(card_q.get(trig.target()));
     let interaction_palette = or_return_quiet!(card.action.tile_interaction_palette());
     let player_tile = player_tile.0;
-    for (tile, position) in card
-        .action
-        .effect_tiles()
+    let effect_tiles = or_return_quiet!(card.action.effect_tiles());
+    for (tile, position) in effect_tiles
         .into_iter()
         .map(|tile| player_tile + tile)
         .filter_map(|tile| grid.tile_to_world(tile).and_then(|pos| Some((tile, pos))))
