@@ -197,9 +197,8 @@ fn check_hand_size(
     rotation_q: Query<&RotationRoot, Without<CardSelected>>,
 ) {
     let (piles_e, draw, hand, discard) = or_return_quiet!(piles_q.single());
-    info!("thingy!");
     if hand.is_empty() {
-        info!("draw new cards pls!");
+        debug!("draw new cards pls!");
         let mut to_draw = Vec::new();
         for e in draw.0.iter().rev().take(3) {
             or_continue!(cmd.get_entity(*e)).try_remove::<DrawPileCard>();
