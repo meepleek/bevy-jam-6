@@ -32,8 +32,23 @@ fn spawn_level(mut cmd: Commands, mut meshes: ResMut<Assets<Mesh>>) {
             pip_cost: 1,
         }),
         CardActionTrigger::TileSelection(Move {
-            reach: EffectReach::Exact(2),
+            reach: EffectReach::Exact(1),
             direction: EffectDirection::Orthogonal,
+            pip_cost: 1,
+        }),
+        CardActionTrigger::TileSelection(Move {
+            reach: EffectReach::Exact(1),
+            direction: EffectDirection::Orthogonal,
+            pip_cost: 1,
+        }),
+        CardActionTrigger::TileSelection(Move {
+            reach: EffectReach::Exact(1),
+            direction: EffectDirection::Orthogonal,
+            pip_cost: 1,
+        }),
+        CardActionTrigger::TileSelection(Move {
+            reach: EffectReach::Exact(2),
+            direction: EffectDirection::Diagonal,
             pip_cost: 1,
         }),
         CardActionTrigger::TileSelection(Attack {
@@ -44,10 +59,17 @@ fn spawn_level(mut cmd: Commands, mut meshes: ResMut<Assets<Mesh>>) {
             poison: false,
         }),
         CardActionTrigger::CardSelection(RerollSelf),
-        CardActionTrigger::TileSelection(Heal {
-            reach: EffectReach::Exact(3),
-            direction: EffectDirection::Area,
-            heal: 1,
+        CardActionTrigger::TileSelection(Attack {
+            reach: EffectReach::Range(1),
+            direction: EffectDirection::Orthogonal,
+            pip_cost: 2,
+            attack: 3,
+            poison: false,
+        }),
+        CardActionTrigger::TileSelection(Move {
+            reach: EffectReach::Exact(2),
+            direction: EffectDirection::Orthogonal,
+            pip_cost: 1,
         }),
         CardActionTrigger::CardSelection(HealSelf(2)),
     ]
