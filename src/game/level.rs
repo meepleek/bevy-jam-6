@@ -19,34 +19,37 @@ pub(super) fn plugin(app: &mut App) {
 
 #[cfg_attr(feature = "native_dev", hot(rerun_on_hot_patch))]
 fn spawn_level(mut cmd: Commands, mut meshes: ResMut<Assets<Mesh>>) {
+    use CardAction::*;
+    use TileCardAction::*;
+
     let mut rng = thread_rng();
     let piles_e = cmd.spawn((Name::new("Piles"), Piles)).id();
     let card_hover_mesh = meshes.add(Rectangle::new(230., 570.));
     for (i, action) in [
-        CardAction::Move {
+        CardActionTrigger::TileSelection(Move {
             reach: EffectReach::Exact(1),
             direction: EffectDirection::Orthogonal,
             pip_cost: 1,
-        },
-        CardAction::Move {
+        }),
+        CardActionTrigger::TileSelection(Move {
             reach: EffectReach::Exact(2),
             direction: EffectDirection::Orthogonal,
             pip_cost: 1,
-        },
-        CardAction::Attack {
+        }),
+        CardActionTrigger::TileSelection(Attack {
             reach: EffectReach::Range(2),
             direction: EffectDirection::Orthogonal,
             pip_cost: 2,
             attack: 2,
             poison: false,
-        },
-        CardAction::RerollSelf,
-        CardAction::Heal {
+        }),
+        CardActionTrigger::CardSelection(RerollSelf),
+        CardActionTrigger::TileSelection(Heal {
             reach: EffectReach::Exact(3),
             direction: EffectDirection::Area,
             heal: 1,
-        },
-        CardAction::HealSelf(2),
+        }),
+        CardActionTrigger::CardSelection(HealSelf(2)),
     ]
     .into_iter()
     .enumerate()

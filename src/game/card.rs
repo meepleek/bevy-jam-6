@@ -1,7 +1,9 @@
 use bevy::color::palettes::css::BLACK;
 
-use crate::game::card_effect::CardAction;
+use crate::game::card_effect::CardActionTrigger;
 use crate::game::card_effect::PlaySelectedTileCard;
+use crate::game::card_effect::TileActionCommon;
+use crate::game::card_effect::TileTarget;
 use crate::game::pile::HandCard;
 use crate::game::tile::TileInteraction;
 use crate::prelude::*;
@@ -15,10 +17,10 @@ pub(super) fn plugin(app: &mut App) {
         .add_observer(process_selected_card);
 }
 
-#[derive(Component, Debug)]
+#[derive(Component, Debug, Clone)]
 #[require(Transform)]
 pub struct Card {
-    pub action: CardAction,
+    pub trigger: CardActionTrigger,
 }
 
 #[derive(Event, Default)]
@@ -35,14 +37,14 @@ util::relationship::relationship_1_to_1!(CardContent, CardContentRoot);
 util::relationship::relationship_1_to_1!(CardFace, CardFaceRoot);
 
 pub fn card(
-    action: CardAction,
+    action: CardActionTrigger,
     position: Vec3,
     rotation: Rot2,
     hover_mesh: Handle<Mesh>,
 ) -> impl Bundle {
     (
         Name::new("card"),
-        Card { action },
+        Card { trigger: action },
         Transform::from_translation(position),
         Visibility::default(),
         Patch(move |b| {
@@ -98,12 +100,12 @@ fn draw_card_effects(
         .with_children(|b| {
             b.spawn((
                 Name::new("card_title"),
-                Text2d::new(card.action.title()),
+                Text2d::new(card.trigger.title()),
                 TextColor::from(BLACK),
                 Transform::from_translation(Vec3::Y * 90.),
             ));
 
-            if let Some(pip_change) = card.action.pip_change() {
+            if let Some(pip_change) = card.trigger.pip_change() {
                 b.spawn((
                     Name::new("pip_cost"),
                     Text2d::new(pip_change.to_string()),
@@ -112,36 +114,34 @@ fn draw_card_effects(
                 ));
             }
 
-            if let Some(trigger) = card.action.trigger() {
-                b.spawn((
-                    Name::new("effect_tiles"),
-                    Transform::from_translation(Vec3::Y * -15.),
-                    Visibility::default(),
-                ))
-                .with_children(|b| {
-                    match trigger {
-                        super::card_effect::ActionTrigger::CardSelection => {
-                            // todo: probably some icon to show that selecting the card will play it?
+            match &card.trigger {
+                CardActionTrigger::CardSelection(action) => {
+                    // todo: smt for card actions
+                    //  b.spawn((
+                    //             Name::new("immediate_action"),
+                    //             Text2d::new("Do the thing"),
+                    //             TextColor::from(BLACK),
+                    //         ));
+                },
+                CardActionTrigger::TileSelection(action) => {
+                    b.spawn((
+                        Name::new("effect_tiles"),
+                        Transform::from_translation(Vec3::Y * -15.),
+                        Visibility::default(),
+                    ))
+                    .with_children(|b| {
+                        let palette = action.tile_interaction_palette();
+                        let size = 20f32;
+                        // center tile
+                        b.spawn((Sprite::from_color(ROSE_300, Vec2::splat(size - 3.)),));
+                        for tile in action.tiles() {
                             b.spawn((
-                                Name::new("immediate_action"),
-                                Text2d::new("Do the thing"),
-                                TextColor::from(BLACK),
+                                Sprite::from_color(palette.highlight, Vec2::splat(size - 3.)),
+                                Transform::from_translation(tile.as_vec2().extend(0.) * size),
                             ));
-                        },
-                        super::card_effect::ActionTrigger::TileSelection { tiles, .. } => {
-                            let palette = or_return!(card.action.tile_interaction_palette());
-                            let size = 20f32;
-                            // center tile
-                            b.spawn((Sprite::from_color(ROSE_300, Vec2::splat(size - 3.)),));
-                            for tile in tiles {
-                                b.spawn((
-                                    Sprite::from_color(palette.highlight, Vec2::splat(size - 3.)),
-                                    Transform::from_translation(tile.as_vec2().extend(0.) * size),
-                                ));
-                            }
-                        },
-                    }
-                });
+                        }
+                    });
+                },
             }
         });
     });
@@ -156,25 +156,24 @@ fn process_selected_card(
 ) {
     let card = or_return!(card_q.get(trig.target()));
     let player_tile = or_return!(grid.entity_to_coords(*player));
-    let trigger = or_return_quiet!(card.action.trigger());
-    match trigger {
-        super::card_effect::ActionTrigger::CardSelection => {
-            unreachable!("Card should have been played directly");
-        },
-        super::card_effect::ActionTrigger::TileSelection { tiles, target_dice } => {
-            let interaction_palette = or_return!(card.action.tile_interaction_palette());
-            for (tile, position) in
-                tiles
-                    .into_iter()
-                    .map(|tile| player_tile + tile)
-                    .filter_map(|tile| {
-                        if !target_dice || grid.contains_die(tile) {
-                            grid.tile_to_world(tile).map(|pos| (tile, pos))
-                        } else {
-                            None
-                        }
-                    })
+    match &card.trigger {
+        CardActionTrigger::TileSelection(action) => {
+            let interaction_palette = action.tile_interaction_palette();
+            for (tile, position) in action
+                .tiles()
+                .into_iter()
+                .map(|tile| player_tile + tile)
+                .filter_map(|tile| {
+                    if matches!(action.tile_target(), TileTarget::EmptyTiles)
+                        || grid.contains_die(tile)
+                    {
+                        grid.tile_to_world(tile).map(|pos| (tile, pos))
+                    } else {
+                        None
+                    }
+                })
             {
+                let card_e = trig.target();
                 cmd.spawn((
                     Transform::from_translation(position.extend(0.)),
                     Sprite::from_color(Color::NONE, Vec2::splat(60.)),
@@ -194,10 +193,16 @@ fn process_selected_card(
                 ))
                 .observe(
                     move |_trig: Trigger<Pointer<Click>>, mut cmd: Commands| {
-                        cmd.trigger(PlaySelectedTileCard(tile));
+                        cmd.trigger(PlaySelectedTileCard {
+                            card_e,
+                            selected_tile: tile,
+                        });
                     },
                 );
             }
+        },
+        CardActionTrigger::CardSelection(_) => {
+            unreachable!("Card should have been played directly")
         },
     }
 }

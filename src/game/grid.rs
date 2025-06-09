@@ -168,23 +168,21 @@ fn track_position(mut board_q: Query<(&mut Grid, &GlobalTransform), Changed<Glob
 fn track_tile_entities(
     entity_q: Query<(Entity, &TileEntityKind, &GlobalTransform), Changed<GlobalTransform>>,
     mut grid: Single<&mut Grid>,
-) -> Result {
+) {
     for (e, kind, t) in &entity_q {
         let tile = or_continue!(grid.world_to_tile(t.translation().truncate()));
         if grid.entities.contains_key(&e) {
-            grid.move_entity(e, tile)?;
+            or_continue!(grid.move_entity(e, tile));
         } else {
-            grid.place_entity(
+            or_continue!(grid.place_entity(
                 TileEntity {
                     entity: e,
                     kind: *kind,
                 },
                 tile,
-            )?;
+            ));
         }
     }
-
-    Ok(())
 }
 
 #[cfg(test)]

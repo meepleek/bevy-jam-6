@@ -4,7 +4,7 @@ use crate::game::grid::Grid;
 use crate::game::grid::TILE_SIZE;
 use crate::prelude::*;
 
-pub(super) fn plugin(app: &mut App) {
+pub(super) fn plugin(_app: &mut App) {
     // todo: probly use states...
     // app.add_systems(Update, draw_board_grid);
 }

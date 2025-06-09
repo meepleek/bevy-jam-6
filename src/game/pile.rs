@@ -9,7 +9,7 @@ use crate::game::card::CARD_BORDER_COL_FOCUS;
 use crate::game::card::CardFace;
 use crate::game::card::CardFaceRoot;
 use crate::game::card::CardPointerOut;
-use crate::game::card_effect::ActionTrigger;
+use crate::game::card_effect::CardActionTrigger;
 use crate::game::card_effect::PlayCard;
 use crate::prelude::tween::PriorityTween;
 use crate::prelude::*;
@@ -278,8 +278,8 @@ fn on_card_click(
     card_selected_q: Query<(&Card, Has<SelectedTileTriggerCard>)>,
 ) {
     let (card, selected) = or_return!(card_selected_q.get(trig.target()));
-    match card.action.trigger() {
-        Some(ActionTrigger::TileSelection { .. }) => {
+    match card.trigger {
+        CardActionTrigger::TileSelection(_) => {
             if selected {
                 // deselect card
                 or_return!(cmd.get_entity(trig.target()))
@@ -290,10 +290,9 @@ fn on_card_click(
                 or_return!(cmd.get_entity(trig.target())).insert(SelectedTileTriggerCard);
             }
         },
-        Some(ActionTrigger::CardSelection) => {
+        CardActionTrigger::CardSelection(_) => {
             cmd.trigger(PlayCard(trig.target()));
         },
-        None => {},
     }
 }
 
